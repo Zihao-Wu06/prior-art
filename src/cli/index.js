@@ -8,7 +8,8 @@
  * passed through as positionals to the command module.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 const USAGE = `Prior Art (pa) — search prior art before you build.
 
@@ -52,7 +53,11 @@ export function parseArgv(argv) {
       continue;
     }
     if (arg === '--eco' || arg === '--rung' || arg === '--mode') {
-      opts[arg.slice(2)] = argv[i + 1];
+      const value = argv[i + 1];
+      if (value === undefined || value.startsWith('--')) {
+        throw { message: `${arg} requires a value`, exitCode: 1 };
+      }
+      opts[arg.slice(2)] = value;
       i += 2;
       continue;
     }
@@ -149,8 +154,22 @@ export async function main(argv) {
   }
 }
 
-main(process.argv.slice(2)).catch(err => {
-  const message = err && err.message ? err.message : String(err);
-  console.error('error: ' + message);
-  process.exit((err && err.exitCode) || 1);
-});
+// Run only when invoked directly (bin or `node src/cli/index.js`), so that
+// importing `parseArgv`/`main` for tests never executes the CLI. realpath
+// handles npm's bin symlinks, which node resolves for import.meta.url.
+const isDirectRun = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch {
+    return false;
+  }
+})();
+
+if (isDirectRun) {
+  main(process.argv.slice(2)).catch(err => {
+    const message = err && err.message ? err.message : String(err);
+    console.error('error: ' + message);
+    process.exit((err && err.exitCode) || 1);
+  });
+}

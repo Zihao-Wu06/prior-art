@@ -2,7 +2,7 @@
 // `<projectDir>/.prior-art/ledger.json`. Used to summarize how much a
 // project has avoided (or accepted) by following the ladder.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const EVENT_TYPES = ['lines-avoided', 'dep-averted', 'dep-adopted', 'wheel-found', 'wheel-fixed'];
@@ -31,12 +31,17 @@ function readLedger(projectDir) {
  */
 export function recordEvent(projectDir, { type, amount = 1, note = '' }) {
   if (!EVENT_TYPES.includes(type)) throw new Error(`unknown event type: ${type}`);
+  if (!Number.isFinite(amount)) throw new Error(`amount must be a finite number, got: ${amount}`);
 
   mkdirSync(join(projectDir, '.prior-art'), { recursive: true });
   const ledger = readLedger(projectDir);
   const event = { ts: new Date().toISOString(), type, amount, note };
   ledger.events.push(event);
-  writeFileSync(ledgerPath(projectDir), JSON.stringify(ledger, null, 2));
+  // Atomic replace: a reader can never observe a torn/partial ledger, which
+  // readLedger would otherwise treat as empty and silently wipe history.
+  const file = ledgerPath(projectDir);
+  writeFileSync(`${file}.tmp`, JSON.stringify(ledger, null, 2));
+  renameSync(`${file}.tmp`, file);
   return event;
 }
 

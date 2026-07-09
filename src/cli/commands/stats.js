@@ -36,8 +36,8 @@ function runRecord(cwd, args) {
   }
 
   const amount = Number(amountRaw);
-  if (Number.isNaN(amount)) {
-    throw { message: `amount must be a number, got "${amountRaw}"`, exitCode: 1 };
+  if (!Number.isFinite(amount)) {
+    throw { message: `amount must be a finite number, got "${amountRaw}"`, exitCode: 1 };
   }
 
   const note = noteWords.join(' ');

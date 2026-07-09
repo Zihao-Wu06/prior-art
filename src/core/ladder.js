@@ -52,6 +52,7 @@ export function parseDecisionNote(text) {
   if (!m) return null;
   const [, rung, option, mode, tradeoff, rejected, revisit] = m;
   if (!isValidRung(rung)) return null;
+  if (mode && !INTEGRATION_MODES.includes(mode)) return null;
   return {
     rung,
     option: option.trim(),

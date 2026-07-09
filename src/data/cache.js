@@ -9,6 +9,10 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const CACHE_DIR = join(homedir(), '.cache', 'priorart', 'http');
 
+// 404s get a short negative TTL: a package published minutes ago must not
+// stay "not found" for a full day just because we asked too early.
+const NEGATIVE_TTL_MS = 300000;
+
 function cacheFile(method, url, body) {
   const key = createHash('sha256').update(`${method} ${url} ${body || ''}`).digest('hex').slice(0, 32);
   return join(CACHE_DIR, `${key}.json`);
@@ -45,7 +49,8 @@ export async function cachedFetchJson(url, { ttlMs = 86400000, fresh = false, me
 
   if (!fresh) {
     const cached = readEntry(file);
-    if (cached && Date.now() - cached.fetchedAt < ttlMs) {
+    const effectiveTtl = cached && cached.status === 404 ? Math.min(ttlMs, NEGATIVE_TTL_MS) : ttlMs;
+    if (cached && Date.now() - cached.fetchedAt < effectiveTtl) {
       return { status: cached.status, data: cached.data, fromCache: true };
     }
   }
