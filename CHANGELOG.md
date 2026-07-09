@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 — 2026-07-09
+
+- fixed all 9 findings from the v0.2 cross-vendor review: removed the shallow
+  Object.assign claim from deep-merge, dropped over-generic name matches
+  (generateId, parseParams), capped hint corroboration to the function block,
+  line-level (not file-level) dedup so distinct wheel sites all fire,
+  single-parameter arrow extraction, .mts/.cts collection, requires-python
+  gating for Python builtins, --json on the empty-language path
+
 ## 0.2.0 — 2026-07-09
 
 - `pa audit`: wheel-reinvention detector (JS/TS + Python pattern catalog, coverage resolution against installed deps and runtime builtins, --json/--dir/--include-tests/--suggest/--ci)

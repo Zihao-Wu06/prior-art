@@ -30,9 +30,10 @@ function readNpmDeps(rootDir) {
   }
 }
 
-/** Pull dependency names from pyproject.toml + requirements*.txt (tolerant, no TOML parser). */
+/** Pull dependency names + requires-python from pyproject.toml + requirements*.txt (tolerant, no TOML parser). */
 function readPyDeps(rootDir, manifests) {
   const deps = new Set();
+  let pythonRequires = null;
 
   const pyproject = join(rootDir, 'pyproject.toml');
   if (existsSync(pyproject)) {
@@ -43,6 +44,11 @@ function readPyDeps(rootDir, manifests) {
       const m = text.match(/^dependencies\s*=\s*\[([\s\S]*?)\]/m);
       if (m) {
         for (const q of m[1].matchAll(/["']([^"']+)["']/g)) deps.add(normalizePyName(q[1]));
+      }
+      const rp = text.match(/^requires-python\s*=\s*["']([^"']+)["']/m);
+      if (rp) {
+        const ver = rp[1].match(/(\d+\.\d+)/);
+        if (ver) pythonRequires = ver[1];
       }
     } catch { /* tolerate */ }
   }
@@ -64,13 +70,13 @@ function readPyDeps(rootDir, manifests) {
     } catch { /* tolerate */ }
   }
 
-  return [...deps];
+  return { deps: [...deps], pythonRequires };
 }
 
 /**
  * Build the audit inventory for a project directory.
  * @param {string} rootDir
- * @returns {{languages: string[], node: {version: string, major: number}, npmDeps: string[], pyDeps: string[], manifests: string[]}}
+ * @returns {{languages: string[], node: {version: string, major: number}, npmDeps: string[], pyDeps: string[], pythonRequires: string|null, manifests: string[]}}
  */
 export function buildInventory(rootDir) {
   const manifests = [];
@@ -80,7 +86,8 @@ export function buildInventory(rootDir) {
   if (hasPackageJson) manifests.push('package.json');
 
   const npmDeps = hasPackageJson ? readNpmDeps(rootDir) : [];
-  const pyDeps = readPyDeps(rootDir, manifests);
+  const py = readPyDeps(rootDir, manifests);
+  const pyDeps = py.deps;
   const hasPyManifest = manifests.some(m => m !== 'package.json');
 
   let sawJs = hasPackageJson;
@@ -99,7 +106,7 @@ export function buildInventory(rootDir) {
             if (!entry.name.startsWith('.') && entry.name !== 'node_modules') stack.push(join(dir, entry.name));
             continue;
           }
-          if (/\.(m?[jt]sx?|cjs)$/.test(entry.name)) sawJs = true;
+          if (/\.(m?[jt]s|c[jt]s|jsx|tsx)$/.test(entry.name)) sawJs = true;
           if (/\.py$/.test(entry.name)) sawPy = true;
         }
       }
@@ -114,6 +121,7 @@ export function buildInventory(rootDir) {
     node: { version: process.version, major: Number(process.version.slice(1).split('.')[0]) },
     npmDeps,
     pyDeps,
+    pythonRequires: py.pythonRequires,
     manifests
   };
 }

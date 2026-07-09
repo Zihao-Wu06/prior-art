@@ -22,9 +22,19 @@ export async function run(opts) {
   const inventory = buildInventory(rootDir);
 
   if (!inventory.languages.length) {
-    console.log('Prior Art — wheel-reinvention audit');
-    console.log(`no js/py sources detected under ${rootDir}`);
-    console.log(coverageLine({ filesScanned: 0, perLang: {}, truncated: false, includeTests: !!opts.includeTests, patternsApplied: 0 }));
+    if (opts.json) {
+      console.log(JSON.stringify({
+        rootDir,
+        findings: [],
+        summary: { total: 0, high: 0, info: 0, filesScanned: 0, filesWithFindings: 0, patternsApplied: 0 },
+        inventory: { languages: [], node: inventory.node.version, npmDeps: 0, pyDeps: 0, pythonRequires: inventory.pythonRequires, manifests: inventory.manifests },
+        coverage: { ignoredDirs: DEFAULT_IGNORE_DIRS, testsExcluded: !opts.includeTests, truncated: false }
+      }, null, 2));
+    } else {
+      console.log('Prior Art — wheel-reinvention audit');
+      console.log(`no js/py sources detected under ${rootDir}`);
+      console.log(coverageLine({ filesScanned: 0, perLang: {}, truncated: false, includeTests: !!opts.includeTests, patternsApplied: 0 }));
+    }
     return;
   }
 
@@ -81,6 +91,7 @@ export async function run(opts) {
         node: inventory.node.version,
         npmDeps: inventory.npmDeps.length,
         pyDeps: inventory.pyDeps.length,
+        pythonRequires: inventory.pythonRequires,
         manifests: inventory.manifests
       },
       coverage: { ignoredDirs: DEFAULT_IGNORE_DIRS, testsExcluded: !opts.includeTests, truncated }

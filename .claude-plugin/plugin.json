@@ -1,5 +1,5 @@
 {
   "name": "prior-art",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Search prior art before you build — reuse ladder, dependency due diligence, and decision notes for AI coding agents. Includes the wheel-reinvention audit (pa audit)."
 }

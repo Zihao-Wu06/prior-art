@@ -149,11 +149,8 @@ export const PATTERNS = [
       /for\s*\(\s*const\s+\w+\s+in\s+/
     ],
     coveredBy: {
-      builtin: {
-        name: 'Object.assign / spread',
-        api: 'Object.assign(target, ...sources) or { ...a, ...b }',
-        note: 'SHALLOW only — nested objects are replaced, not merged; this is the usual reason the wheel was written'
-      },
+      // No builtin: Object.assign / spread are SHALLOW — recommending them for
+      // a deep merge would be exactly the misinformation this catalog forbids.
       deps: [
         { name: 'deepmerge', api: 'deepmerge(a, b)' },
         { name: 'lodash', api: '_.merge(object, ...sources)' }
@@ -795,7 +792,7 @@ export const PATTERNS = [
     title: 'Hand-rolled UUID generator',
     langs: ['js'],
     category: 'ids',
-    namePattern: /^(uuid|uuidv4|uuid4|gen(?:erate)?[_-]?uuid|make[_-]?uuid|new[_-]?uuid|generate[_-]?id)$/i,
+    namePattern: /^(uuid|uuidv4|uuid4|gen(?:erate)?[_-]?uuid|make[_-]?uuid|new[_-]?uuid)$/i,
     nameOnly: true,
     bodyHints: [],
     coveredBy: {
@@ -875,7 +872,7 @@ export const PATTERNS = [
     title: 'Hand-rolled query-string parser',
     langs: ['js'],
     category: 'encoding',
-    namePattern: /^(parse[_-]?query(?:[_-]?string)?|parse[_-]?qs|query[_-]?string[_-]?parse|parse[_-]?search|parse[_-]?params)$/i,
+    namePattern: /^(parse[_-]?query(?:[_-]?string)?|parse[_-]?qs|query[_-]?string[_-]?parse|parse[_-]?search)$/i,
     nameOnly: true,
     bodyHints: [],
     coveredBy: {

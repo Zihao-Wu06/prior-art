@@ -13,7 +13,8 @@ export const DEFAULT_IGNORE_DIRS = [
   'venv', '.venv', '__pycache__', 'coverage', '.next', '.nuxt', '.cache', '.prior-art'
 ];
 
-const JS_EXT = /\.(mjs|cjs|jsx?|tsx?)$/;
+const JS_EXT = /\.(m?[jt]s|c[jt]s|jsx|tsx)$/;
+const DECL_EXT = /\.d\.(ts|mts|cts)$/;
 const TEST_PATH = /(^|\/)(tests?|__tests__)(\/|$)|\.(test|spec)\.[a-z]+$|(^|\/)conftest\.py$/;
 
 // Keywords that the loose method-form name extractor would otherwise catch.
@@ -66,7 +67,7 @@ export function collectSourceFiles(rootDir, { includeTests = false, maxFiles = 4
       if (!entry.isFile()) continue;
 
       let lang = null;
-      if (JS_EXT.test(entry.name) && !entry.name.endsWith('.d.ts')) lang = 'js';
+      if (JS_EXT.test(entry.name) && !DECL_EXT.test(entry.name)) lang = 'js';
       else if (entry.name.endsWith('.py')) lang = 'py';
       if (!lang) continue;
 
@@ -101,7 +102,7 @@ function extractNames(line, lang) {
   }
   for (const re of [
     /(?:^|\s)function\s+([A-Za-z_$][\w$]*)\s*\(/,
-    /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\()/,
+    /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\(|[A-Za-z_$][\w$]*\s*=>)/,
     /([A-Za-z_$][\w$]*)\s*:\s*(?:async\s*)?function\b/,
     /^\s{2,}(?:async\s+)?([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{\s*$/   // class/object method form (noisy → keyword-filtered)
   ]) {
@@ -140,14 +141,14 @@ function estimateBlockLines(lines, start, lang) {
   return Math.max(1, cap - start);
 }
 
-function makeMatch(patternId, lines, lineIdx, name, via, lang) {
+function makeMatch(patternId, lines, lineIdx, name, via, lang, blockLines) {
   return {
     patternId,
     line: lineIdx + 1,
     name,
     snippet: lines[lineIdx].trim().slice(0, SNIPPET_MAX),
     via,
-    blockLines: estimateBlockLines(lines, lineIdx, lang)
+    blockLines: blockLines ?? estimateBlockLines(lines, lineIdx, lang)
   };
 }
 
@@ -165,12 +166,17 @@ export function scanFile(content, lang, patterns) {
   }
   const matches = [];
   const countByPattern = new Map();
-  const firedViaName = new Set();
+  const claimedLines = new Set();   // `${patternId}:${line}` already reported
 
   const push = match => {
     const n = countByPattern.get(match.patternId) || 0;
     if (n >= MAX_PER_PATTERN_PER_FILE) return;
     countByPattern.set(match.patternId, n + 1);
+    // Claim the whole block: one wheel is one finding, even when both the
+    // name and a body hint inside the same function would match.
+    for (let l = match.line; l < match.line + match.blockLines; l++) {
+      claimedLines.add(`${match.patternId}:${l}`);
+    }
     matches.push(match);
   };
 
@@ -184,27 +190,30 @@ export function scanFile(content, lang, patterns) {
       if (!name) continue;
       if (pattern.nameOnly) {
         push(makeMatch(pattern.id, lines, i, name, 'name', lang));
-        firedViaName.add(pattern.id);
         continue;
       }
-      const windowEnd = Math.min(lines.length, i + 1 + HINT_WINDOW);
+      // Corroboration must come from THIS function's body: cap the search
+      // window to the estimated block so a hint in the next function can
+      // never validate an unrelated generic name.
+      const block = estimateBlockLines(lines, i, lang);
+      const windowEnd = Math.min(lines.length, i + Math.min(block, HINT_WINDOW));
       let corroborated = false;
       for (let j = i; j < windowEnd && !corroborated; j++) {
         corroborated = pattern.bodyHints.some(h => h.test(lines[j]));
       }
       if (corroborated) {
-        push(makeMatch(pattern.id, lines, i, name, 'name+body', lang));
-        firedViaName.add(pattern.id);
+        push(makeMatch(pattern.id, lines, i, name, 'name+body', lang, block));
       }
     }
   }
 
   // Pass 2 — body-only firing, exclusively for nameOnly patterns whose hints
-  // are unambiguous alone. Skipped when the pattern already fired via name.
+  // are unambiguous alone. A name fire elsewhere in the file does not suppress
+  // a distinct wheel site; only the exact same line is deduplicated.
   for (const pattern of patterns) {
     if (!pattern.nameOnly || !pattern.bodyHints.length) continue;
-    if (firedViaName.has(pattern.id)) continue;
     for (let i = 0; i < lines.length; i++) {
+      if (claimedLines.has(`${pattern.id}:${i + 1}`)) continue;
       if (pattern.bodyHints.some(h => h.test(lines[i]))) {
         push(makeMatch(pattern.id, lines, i, null, 'body', lang));
       }

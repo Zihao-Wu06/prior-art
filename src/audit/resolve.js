@@ -9,9 +9,11 @@ function parseVersion(v) {
   return { major: parts[0] || 0, minor: parts[1] || 0 };
 }
 
-function nodeSatisfies(since, nodeVersion) {
+// Generic "available version satisfies required floor" — works for Node
+// ('v22.16.0' vs 17 / '14.17') and Python ('3.9' vs '3.12') alike.
+function nodeSatisfies(since, availableVersion) {
   const s = parseVersion(since);
-  const n = parseVersion(nodeVersion);
+  const n = parseVersion(availableVersion);
   return n.major > s.major || (n.major === s.major && n.minor >= s.minor);
 }
 
@@ -42,8 +44,23 @@ export function resolveFinding(match, pattern, inventory, { suggest = false } = 
 
   if (builtin) {
     if (lang === 'py') {
-      const suffix = builtin.since && builtin.since.python ? ` (requires Python ≥ ${builtin.since.python})` : '';
-      return { ...base, level: 'high', action: 'use-builtin', coveredBy: `built-in ${builtin.api}${suffix}` };
+      const sincePy = builtin.since && builtin.since.python;
+      if (!sincePy) {
+        return { ...base, level: 'high', action: 'use-builtin', coveredBy: `built-in ${builtin.api}` };
+      }
+      // Gate version-dependent Python builtins on requires-python; without a
+      // declared floor we cannot assume the runtime, so downgrade to info.
+      if (inventory.pythonRequires && nodeSatisfies(sincePy, inventory.pythonRequires)) {
+        return { ...base, level: 'high', action: 'use-builtin', coveredBy: `built-in ${builtin.api} — Python ≥ ${sincePy}` };
+      }
+      const installedPy = matchInstalledDep(deps, inventory, lang);
+      if (installedPy) {
+        return { ...base, level: 'high', action: 'use-installed', coveredBy: `installed dependency: ${installedPy.name} — ${installedPy.api}` };
+      }
+      const reason = inventory.pythonRequires
+        ? `project requires-python is ${inventory.pythonRequires}`
+        : 'project python version unknown';
+      return { ...base, level: 'info', action: 'use-builtin', coveredBy: `built-in ${builtin.api} requires Python ≥ ${sincePy} (${reason})` };
     }
     const since = builtin.since && builtin.since.node;
     if (!since || nodeSatisfies(since, inventory.node.version)) {

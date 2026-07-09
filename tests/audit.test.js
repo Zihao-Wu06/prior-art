@@ -193,3 +193,90 @@ test('e2e: audit finds wheels in a fixture project, skips tests', { skip: !HAS_C
   assert.ok(out.findings.some(f => /structuredClone|lodash/.test(f.coveredBy)));
   assert.equal(out.coverage.testsExcluded, true);
 });
+
+// ── Regressions from the v0.2 cross-vendor review ────────────────────────────
+
+test('review: name-gated hint beyond the function block does not corroborate', () => {
+  const src = 'function retryOnce() { return 1; }\n\nfunction unrelated() {\n  const delay = Math.pow(2, attempt);\n}\n';
+  assert.equal(scanFile(src, 'js', [FIXTURE_PATTERNS.retry]).length, 0);
+});
+
+test('review: distinct body site fires even when a name fire exists elsewhere', () => {
+  const src = 'function deepClone(x) { return x; }\n\nconst snapshot = JSON.parse(JSON.stringify(config));\n';
+  const out = scanFile(src, 'js', [FIXTURE_PATTERNS.deepClone]);
+  assert.equal(out.length, 2);
+  assert.deepEqual(out.map(m => m.via).sort(), ['body', 'name']);
+});
+
+test('review: same-block name+hint stays a single finding', () => {
+  const src = 'function deepClone(x) {\n  return JSON.parse(JSON.stringify(x));\n}\n';
+  assert.equal(scanFile(src, 'js', [FIXTURE_PATTERNS.deepClone]).length, 1);
+});
+
+test('review: single-parameter arrow functions are extracted', () => {
+  const src = 'const retryDelay = attempt => Math.pow(2, attempt) * 100;\n';
+  assert.equal(scanFile(src, 'js', [FIXTURE_PATTERNS.retry]).length, 1);
+});
+
+test('review: .mts/.cts are collected, .d.mts is not', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pa-mts-'));
+  mkdirSync(join(dir, 'src'));
+  writeFileSync(join(dir, 'src', 'a.mts'), 'x');
+  writeFileSync(join(dir, 'src', 'b.cts'), 'x');
+  writeFileSync(join(dir, 'src', 'c.d.mts'), 'x');
+  const { files } = collectSourceFiles(dir);
+  assert.deepEqual(files.map(f => f.rel).sort(), ['src/a.mts', 'src/b.cts']);
+});
+
+test('review: pyproject requires-python is parsed', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pa-pyreq-'));
+  writeFileSync(join(dir, 'pyproject.toml'), '[project]\nname = "x"\nrequires-python = ">=3.10"\ndependencies = ["tenacity>=8"]\n');
+  const inv = buildInventory(dir);
+  assert.equal(inv.pythonRequires, '3.10');
+  assert.ok(inv.pyDeps.includes('tenacity'));
+});
+
+const PY_BATCHED = {
+  id: 'fx-batched', title: 'Chunking', langs: ['py'], category: 'arrays',
+  namePattern: /^chunked?$/i, nameOnly: true, bodyHints: [],
+  coveredBy: { builtin: { name: 'itertools.batched', api: 'itertools.batched(it, n)', since: { python: '3.12' } }, deps: [{ name: 'more-itertools', api: 'chunked(it, n)' }] }
+};
+const PYMATCH = { patternId: 'fx-batched', line: 1, snippet: 's', via: 'name', blockLines: 2, file: 'src/a.py' };
+
+test('review: python builtins gate on requires-python', () => {
+  const ok = resolveFinding(PYMATCH, PY_BATCHED, { ...INV22, pythonRequires: '3.12', pyDeps: [] });
+  assert.equal(ok.level, 'high');
+  const low = resolveFinding(PYMATCH, PY_BATCHED, { ...INV22, pythonRequires: '3.9', pyDeps: [] });
+  assert.equal(low.level, 'info');
+  assert.match(low.coveredBy, /requires Python ≥ 3\.12/);
+  const unknown = resolveFinding(PYMATCH, PY_BATCHED, { ...INV22, pythonRequires: null, pyDeps: [] });
+  assert.equal(unknown.level, 'info');
+  const viaDep = resolveFinding(PYMATCH, PY_BATCHED, { ...INV22, pythonRequires: '3.9', pyDeps: ['more-itertools'] });
+  assert.equal(viaDep.action, 'use-installed');
+});
+
+test('review: catalog does not misfire on generic names or claim a shallow-merge builtin', { skip: !HAS_CATALOG }, async () => {
+  const { patternsForLang } = await import('../src/audit/patterns.js');
+  const js = patternsForLang('js');
+  assert.equal(scanFile('function generateId(row) { return row.id + 1; }\n', 'js', js).length, 0);
+  assert.equal(scanFile('function parseParams(argv) { return argv.slice(2); }\n', 'js', js).length, 0);
+  const merge = js.find(p => p.id === 'deep-merge');
+  assert.ok(merge && !merge.coveredBy.builtin, 'deep-merge must not claim a shallow builtin');
+});
+
+test('review: --json works on the empty-language path', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pa-empty-'));
+  writeFileSync(join(dir, 'notes.txt'), 'x');
+  const { run } = await import('../src/cli/commands/audit.js');
+  const logged = [];
+  const orig = console.log;
+  console.log = (...a) => logged.push(a.join(' '));
+  try {
+    await run({ dir, json: true });
+  } finally {
+    console.log = orig;
+  }
+  const out = JSON.parse(logged.join('\n'));
+  assert.deepEqual(out.findings, []);
+  assert.equal(out.summary.total, 0);
+});
