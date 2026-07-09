@@ -107,7 +107,7 @@ export async function run(opts) {
 
 function coverageLine({ filesScanned, perLang, truncated, includeTests, patternsApplied }) {
   const langBits = Object.entries(perLang).map(([l, n]) => `${l} ${n}`).join(', ');
-  return 'Coverage: scanned ' + filesScanned + ' files' +
+  return 'Coverage: scanned ' + filesScanned + ` file${filesScanned === 1 ? '' : 's'}` +
     (langBits ? ` (${langBits})` : '') +
     (truncated ? ', truncated at file cap' : '') +
     `; ${includeTests ? 'tests included' : 'tests excluded (use --include-tests)'}` +

@@ -52,15 +52,15 @@ function printSummary(cwd) {
   if (count === 0) {
     console.log(
       'Prior Art ledger — 0 events.\n' +
-      'The ledger starts filling in once the wheel-reinvention audit (arriving in v0.2) and the\n' +
-      'Prior Art skills record events during your sessions.\n' +
-      'You can also record one manually:\n' +
+      'Nothing writes here automatically: the Prior Art skills record events during\n' +
+      'Claude Code sessions (after verified fixes), and you can record one manually:\n' +
+      '  pa stats record wheel-fixed 1 replaced deepClone with structuredClone\n' +
       '  pa stats record lines-avoided 120 reused the existing retry helper'
     );
     return;
   }
 
-  console.log(`Prior Art ledger — ${count} events (first ${first} last ${last})`);
+  console.log(`Prior Art ledger — ${count} event${count === 1 ? '' : 's'} (first ${first} last ${last})`);
   console.log('');
 
   const types = Object.keys(totals);

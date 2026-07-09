@@ -7,11 +7,10 @@ const TEMPLATE_NAME = '0000-template.md';
 
 const DEFAULT_CONFIG = {
   sensitivity: 'standard',
-  strictness: 'standard',
   priorities: [],
   alwaysBuild: [],
   alwaysReuse: [],
-  notes: 'Prior Art config — sensitivity: off|light|standard|strict controls how actively the Claude Code plugin nudges; see README.'
+  notes: 'Prior Art config — sensitivity: off|light|standard|strict controls how actively the Claude Code plugin nudges (init scaffolds "standard"; without a config file the code default is "light"); see README.'
 };
 
 const TEMPLATE = `# NNNN. <title>
@@ -78,5 +77,6 @@ Next steps:
   3. Try it out:
        pa report <pkg>
        pa adr new "<title>"
-       pa audit`);
+       pa audit
+  4. The ledger (.prior-art/ledger.json) is a machine-local tally — consider gitignoring it.`);
 }

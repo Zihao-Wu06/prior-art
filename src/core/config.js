@@ -5,13 +5,12 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
-/** @typedef {{sensitivity: string, strictness: string, priorities: string[], alwaysBuild: string[], alwaysReuse: string[]}} Config */
+/** @typedef {{sensitivity: string, priorities: string[], alwaysBuild: string[], alwaysReuse: string[]}} Config */
 
 /** @type {Config} */
 export const DEFAULTS = {
   // off: silent | light: session context only | standard: + prompt gate | strict: + write nudge
   sensitivity: 'light',
-  strictness: 'standard',
   priorities: [],
   alwaysBuild: [],
   alwaysReuse: []

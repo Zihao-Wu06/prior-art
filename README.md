@@ -16,12 +16,18 @@ Prior Art isn't a library salesman and it isn't a minimalism zealot. It's a due-
 
 ## Quick start
 
+> **Not on npm yet.** Until `priorart` is published, install from a clone:
+>
+> ```bash
+> git clone https://github.com/Zihao-Wu06/prior-art && cd prior-art && npm link
+> ```
+
 ```bash
-npx priorart init
+pa init
 pa report zod
 ```
 
-`init` scaffolds a `.prior-art.json` config in your project; `report` pulls dependency health, security, and license signals for a single package.
+`init` scaffolds a `.prior-art.json` config in your project; `report` pulls dependency health, security, and license signals for a single package. **`pa report` exits 1 when it finds HIGH flags** (known vulnerabilities, deprecation) — that is deliberate, so it can gate CI; account for it in `set -e` scripts. Network results are cached under `~/.cache/priorart/` (24h; `--fresh` bypasses).
 
 Inside Claude Code:
 
@@ -52,7 +58,7 @@ Honest inventory — what's shipped vs. what's planned.
 | Version | Ships |
 |---|---|
 | v0.1 | `pa report <pkg>` (7 ecosystems) · `pa init` · `pa adr new` / `pa adr list` · `pa stats` (ledger) · Claude Code plugin (Gate skill + ADR skill + 3-layer hooks) |
-| **v0.2** (today) | `pa audit` — wheel-reinvention detector: finds hand-rolled code that installed deps or the stdlib already cover |
+| v0.2 | `pa audit` — wheel-reinvention detector: finds hand-rolled code that installed deps or the stdlib already cover |
 | **v0.3** (today) | `pa search` — prior-art discovery across your repo, the package registry (npm/crates), and GitHub, with per-channel coverage honesty |
 | v0.3 (rest) | installed-capability index, knowledge packs, MCP server |
 | v0.4 | GitHub Action, benchmark runner, public Wheel Reinvention Index |
@@ -61,14 +67,14 @@ Honest inventory — what's shipped vs. what's planned.
 
 Stop at the first rung that actually satisfies the need — don't keep climbing.
 
-0. **do-nothing** — the need is speculative; don't build it yet.
-1. **built-in** — the language or standard library already covers it.
-2. **native-platform** — a browser, OS, database, framework, or protocol primitive covers it.
-3. **installed-capability** — an already-installed dependency, a connected MCP server, or an installed skill covers it.
-4. **existing-solution** — a whole existing project or self-hosted solution can be adopted or forked.
-5. **open-source** — pull in a new, mature open-source library.
-6. **commercial** — buy reliability, compliance, or time.
-7. **in-house** — build it, because it's actual differentiation.
+1. **do-nothing** — the need is speculative; don't build it yet.
+2. **built-in** — the language or standard library already covers it.
+3. **native-platform** — a browser, OS, database, framework, or protocol primitive covers it.
+4. **installed-capability** — an already-installed dependency, a connected MCP server, or an installed skill covers it.
+5. **existing-solution** — a whole existing project or self-hosted solution can be adopted or forked.
+6. **open-source** — pull in a new, mature open-source library.
+7. **commercial** — buy reliability, compliance, or time.
+8. **in-house** — build it, because it's actual differentiation.
 
 Every choice also carries an integration mode — **adopt / extend / compose / build** — describing *how* the option gets used. Mode is orthogonal to rung: it answers "how," not "which level."
 
@@ -98,7 +104,7 @@ Annoyance is the main way tools like this get uninstalled, so the gate escalates
 | `off` | No hooks fire. |
 | `light` | `SessionStart` injects compressed ladder context only. |
 | `standard` | `light`, plus a prompt-level gate on `UserPromptSubmit` for build/implement-shaped requests. |
-| `strict` | `standard`, plus a one-time pre-write nudge on `PreToolUse(Write)` — at most once per session per capability. |
+| `strict` | `standard`, plus a one-time pre-write nudge on `PreToolUse(Write)` — at most once per session. |
 
 Sensitivity is set via the `sensitivity` key in `.prior-art.json`; the default is `light`. This repo's own config dogfoods `standard`.
 
@@ -115,6 +121,7 @@ Sequenced hardest-to-copy first, so the project stays worth using even if the ea
 
 - **v0.2 — audit. Shipped.** The wheel-reinvention detector: scans a repository for hand-rolled code that an installed dependency or the standard library already covers, and produces a report with file/line findings and estimated lines saved. This is the killer feature.
 - **v0.3 — discovery.** Shipping in slices: `pa search` (repo + registry + GitHub channels) is live. Still to come: the installed-capability index, the first knowledge packs (JS and Python), and an MCP server exposing the pipeline to any agent.
+- **v0.4 — closing the loop.** A GitHub Action for PR-time dependency review and diff-level reinvention detection, the full benchmark runner, and the first public Wheel Reinvention Index.
 
 ## Search
 
@@ -130,7 +137,6 @@ pa search "markdown table parser" --eco cargo --limit 5
 3. **GitHub** — top repositories by stars, with last-push date, license, and archived flags. Unauthenticated GitHub allows 10 searches/min; set `GITHUB_TOKEN` to raise it.
 
 Every result block ends with a coverage line naming the channels searched and skipped — an empty channel means "no match found there", never "no solution exists". Vet candidates with `pa report <pkg>` and record the call with `pa adr new`.
-- **v0.4 — closing the loop.** A GitHub Action for PR-time dependency review and diff-level reinvention detection, the full benchmark runner, and the first public Wheel Reinvention Index.
 
 ## Credits
 

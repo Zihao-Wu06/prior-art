@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2 — 2026-07-09
+
+Fixes from the first blind user test (an agent evaluating the tool cold, no
+guidance): `pa --help`/`-h` now exit 0; README documents `pa report`'s
+exit-1-on-HIGH semantics, install-from-clone (npm publish pending), and the
+`~/.cache/priorart/` location; ladder numbering unified to 1–8 everywhere
+(README said 0–7 while the hooks injected 1–8); strict-mode wording corrected
+to once-per-session; stale `pa stats` empty-state text rewritten; dead
+`strictness` config key removed; retry pattern now catches `retryWithBackoff`
+-style names; Roadmap/Search section untangled; duplicate "(today)" markers
+dropped.
+
 ## 0.3.1 — 2026-07-09
 
 - security/correctness fixes from the v0.3 cross-vendor review: GitHub search

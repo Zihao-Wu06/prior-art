@@ -17,7 +17,7 @@ Usage: pa <command> [options]
 
 Commands:
   init                                    Scaffold .prior-art.json and docs/decisions/ here.
-  report <pkg>                            Dependency due-diligence report (deps.dev + OSV + npm).
+  report <pkg>                            Dependency due-diligence report; exits 1 on HIGH flags (CI-friendly).
   adr new <title words…>                  Create a new architecture decision record.
   adr list                                List existing decision records.
   stats                                   Show the prior-art ledger summary.
@@ -54,6 +54,11 @@ export function parseArgv(argv) {
     const arg = argv[i];
     if (arg === '--version' || arg === '-v') {
       opts.version = true;
+      i += 1;
+      continue;
+    }
+    if (arg === '--help' || arg === '-h') {
+      opts.help = true;
       i += 1;
       continue;
     }
@@ -103,7 +108,7 @@ export async function main(argv) {
     return;
   }
 
-  if (!command || command === 'help') {
+  if (opts.help || !command || command === 'help') {
     console.log(USAGE);
     return;
   }

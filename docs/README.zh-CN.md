@@ -18,9 +18,15 @@ Prior Art 不推销库，也不鼓吹"能自己写就别装依赖"的极简主�
 
 ## 快速开始
 
+> **尚未发布到 npm。** 发布前请从 clone 安装：
+>
+> ```bash
+> git clone https://github.com/Zihao-Wu06/prior-art && cd prior-art && npm link
+> ```
+
 ```bash
-npx priorart init
-pa report zod
+pa init
+pa report zod        # 注意：发现高危 flag 时退出码为 1（为 CI 门禁设计）
 ```
 
 在 Claude Code 里：
@@ -47,14 +53,14 @@ pa audit --ci                         # 存在高置信度发现时以退出码 
 
 停在第一个能满足需求的梯级，不要往上爬：
 
-0. **do-nothing** —— 需求是投机性的，先别做。
-1. **built-in** —— 语言或标准库已经覆盖。
-2. **native-platform** —— 浏览器/操作系统/数据库/框架/协议原语已经覆盖。
-3. **installed-capability** —— 已装依赖、已连接的 MCP server、或已装 skill 已经覆盖。
-4. **existing-solution** —— 有现成的整个项目或自托管方案可以直接用或 fork。
-5. **open-source** —— 引入一个成熟的新开源库。
-6. **commercial** —— 花钱买可靠性、合规或时间。
-7. **in-house** —— 自己造，因为这就是差异化本身。
+1. **do-nothing** —— 需求是投机性的，先别做。
+2. **built-in** —— 语言或标准库已经覆盖。
+3. **native-platform** —— 浏览器/操作系统/数据库/框架/协议原语已经覆盖。
+4. **installed-capability** —— 已装依赖、已连接的 MCP server、或已装 skill 已经覆盖。
+5. **existing-solution** —— 有现成的整个项目或自托管方案可以直接用或 fork。
+6. **open-source** —— 引入一个成熟的新开源库。
+7. **commercial** —— 花钱买可靠性、合规或时间。
+8. **in-house** —— 自己造，因为这就是差异化本身。
 
 每个选择还带一个集成模式——**adopt / extend / compose / build**——回答"怎么用"，和"用哪一级"是两个正交的问题。
 
@@ -63,7 +69,7 @@ pa audit --ci                         # 存在高置信度发现时以退出码 
 | 版本 | 内容 |
 |---|---|
 | v0.1 | `pa report <pkg>`（覆盖 7 个生态）· `pa init` · `pa adr new` / `pa adr list` · `pa stats`（台账）· Claude Code 插件（Gate skill + ADR skill + 三层 hook） |
-| **v0.2**（现在） | `pa audit` —— 重造轮子审计：找出已装依赖或标准库已经覆盖的手写代码 |
+| v0.2 | `pa audit` —— 重造轮子审计：找出已装依赖或标准库已经覆盖的手写代码 |
 | **v0.3**（现在） | `pa search` 先例检索——本仓库 + 注册表（npm/crates）+ GitHub 三通道，逐通道覆盖声明 |
 | v0.3（剩余） | 已装能力索引、知识包、MCP server |
 | v0.4 | GitHub Action、基准测试跑分器、公开的 Wheel Reinvention Index |
@@ -77,7 +83,7 @@ pa audit --ci                         # 存在高置信度发现时以退出码 
 | `off` | 不触发任何 hook。 |
 | `light` | `SessionStart` 只注入压缩版阶梯上下文。 |
 | `standard` | 在 `light` 基础上，`UserPromptSubmit` 对"build/实现"类请求加一层提示级门控。 |
-| `strict` | 在 `standard` 基础上，`PreToolUse(Write)` 加一次性提醒——每会话每能力最多一次。 |
+| `strict` | 在 `standard` 基础上，`PreToolUse(Write)` 加一次性提醒——每会话最多一次。 |
 
 ## 致谢与许可
 

@@ -8,7 +8,6 @@ import { DEFAULTS, SENSITIVITY_LEVELS, loadConfig } from '../src/core/config.js'
 test('DEFAULTS contract', () => {
   assert.deepEqual(DEFAULTS, {
     sensitivity: 'light',
-    strictness: 'standard',
     priorities: [],
     alwaysBuild: [],
     alwaysReuse: []
@@ -40,7 +39,6 @@ test('loadConfig walks up from a nested dir and merges the found file over defau
     const cfg = loadConfig(nested);
     assert.equal(cfg.sensitivity, 'strict');
     assert.deepEqual(cfg.priorities, ['speed']);
-    assert.equal(cfg.strictness, 'standard'); // untouched default
     assert.deepEqual(cfg.alwaysBuild, []); // untouched default
     assert.equal(cfg._path, configPath);
   } finally {
@@ -51,11 +49,11 @@ test('loadConfig walks up from a nested dir and merges the found file over defau
 test('loadConfig finds a file in startDir itself, not only ancestors', () => {
   const dir = mkdtempSync(join(tmpdir(), 'priorart-config-'));
   const configPath = join(dir, '.prior-art.json');
-  writeFileSync(configPath, JSON.stringify({ strictness: 'off' }));
+  writeFileSync(configPath, JSON.stringify({ sensitivity: 'off' }));
 
   try {
     const cfg = loadConfig(dir);
-    assert.equal(cfg.strictness, 'off');
+    assert.equal(cfg.sensitivity, 'off');
     assert.equal(cfg._path, configPath);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -71,7 +69,6 @@ test('loadConfig reports malformed JSON via _error and never throws', () => {
     let cfg;
     assert.doesNotThrow(() => { cfg = loadConfig(dir); });
     assert.equal(cfg.sensitivity, DEFAULTS.sensitivity);
-    assert.equal(cfg.strictness, DEFAULTS.strictness);
     assert.equal(cfg._path, null);
     assert.equal(typeof cfg._error, 'string');
     assert.ok(cfg._error.length > 0);

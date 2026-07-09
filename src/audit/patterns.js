@@ -635,12 +635,13 @@ export const PATTERNS = [
     title: 'Hand-rolled retry with backoff',
     langs: ['js'],
     category: 'async',
-    namePattern: /^(retry|with[_-]?retry|retryable|retry[_-]?async|fetch[_-]?retry|retry[_-]?fn)$/i,
+    namePattern: /^(retry\w*|with[_-]?retry|\w*retry)$/i,
     nameOnly: false,
     bodyHints: [
       /Math\.pow\(\s*2\b/,
       /\b2\s*\*\*\s*\w+/,
-      /\bdelay\s*\*=\s*2\b/
+      /\bdelay\s*\*=\s*2\b/,
+      /await\s+(sleep|delay|wait)\s*\(/i
     ],
     coveredBy: {
       deps: [
