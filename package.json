@@ -1,6 +1,6 @@
 {
   "name": "priorart",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Search prior art before you build. An evidence engine that stops AI coding agents from reinventing the wheel.",
   "type": "module",
   "bin": {
@@ -28,7 +28,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zihaowu/prior-art"
+    "url": "https://github.com/Zihao-Wu06/prior-art"
   },
   "files": [
     "src",

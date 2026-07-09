@@ -22,7 +22,7 @@ Commands:
   adr list                                List existing decision records.
   stats                                   Show the prior-art ledger summary.
   stats record <type> <amount> [note…]    Manually record a ledger event.
-  audit                                   Wheel-reinvention audit (arrives in v0.2).
+  audit [--dir <path>]                    Scan for hand-rolled code your deps or stdlib already cover.
   search                                  Prior-art discovery across sources (arrives in v0.3).
   help                                    Show this help.
 
@@ -32,6 +32,10 @@ Options:
   --eco <system>         Package ecosystem (default npm): npm|pypi|go|maven|cargo|nuget|rubygems.
   --rung <rung>           Reuse-ladder rung id (used by \`pa adr new\`).
   --mode <mode>            Integration mode: adopt|extend|compose|build (used by \`pa adr new\`).
+  --dir <path>          Audit a different directory (default: cwd).
+  --include-tests       Include test files in the audit.
+  --suggest             Also suggest well-known libraries that are not installed.
+  --ci                  Exit 1 when high-confidence findings exist.
   --version, -v             Print the installed version.
 `;
 
@@ -52,7 +56,7 @@ export function parseArgv(argv) {
       i += 1;
       continue;
     }
-    if (arg === '--eco' || arg === '--rung' || arg === '--mode') {
+    if (arg === '--eco' || arg === '--rung' || arg === '--mode' || arg === '--dir') {
       const value = argv[i + 1];
       if (value === undefined || value.startsWith('--')) {
         throw { message: `${arg} requires a value`, exitCode: 1 };
@@ -61,8 +65,13 @@ export function parseArgv(argv) {
       i += 2;
       continue;
     }
-    if (arg === '--json' || arg === '--fresh') {
+    if (arg === '--json' || arg === '--fresh' || arg === '--suggest' || arg === '--ci') {
       opts[arg.slice(2)] = true;
+      i += 1;
+      continue;
+    }
+    if (arg === '--include-tests') {
+      opts.includeTests = true;
       i += 1;
       continue;
     }
@@ -78,14 +87,6 @@ function readVersion() {
   const pkgUrl = new URL('../../package.json', import.meta.url);
   const pkg = JSON.parse(readFileSync(pkgUrl, 'utf8'));
   return pkg.version;
-}
-
-function printAudit() {
-  console.log(
-    'pa audit — the wheel-reinvention detector — arrives in v0.2.\n' +
-    'It will scan a repo for hand-rolled code that installed dependencies or the standard library already cover.\n' +
-    'Follow the roadmap in README.md.'
-  );
 }
 
 function printSearch() {
@@ -142,9 +143,11 @@ export async function main(argv) {
       await run(opts, positionals);
       break;
     }
-    case 'audit':
-      printAudit();
+    case 'audit': {
+      const { run } = await import('./commands/audit.js');
+      await run(opts);
       break;
+    }
     case 'search':
       printSearch();
       break;

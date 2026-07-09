@@ -2,7 +2,7 @@
 
 **Search prior art before you build.**
 
-Prior Art is an evidence engine that stops AI coding agents from reinventing the wheel. Today it gives you a reuse ladder, dependency due diligence, and a decision-note format an ADR can point to. A wheel-reinvention audit ships in v0.2, a discovery pipeline with an MCP server and knowledge packs in v0.3, and a GitHub Action plus a public Wheel Reinvention Index in v0.4.
+Prior Art is an evidence engine that stops AI coding agents from reinventing the wheel. Today it gives you a reuse ladder, dependency due diligence, a decision-note format an ADR can point to, and a wheel-reinvention audit (`pa audit`) that finds hand-rolled code your installed dependencies or standard library already cover. Next up: a discovery pipeline with an MCP server and knowledge packs in v0.3, and a GitHub Action plus a public Wheel Reinvention Index in v0.4.
 
 ## Why
 
@@ -26,11 +26,24 @@ pa report zod
 Inside Claude Code:
 
 ```
-/plugin marketplace add zihaowu/prior-art
+/plugin marketplace add Zihao-Wu06/prior-art
 /plugin install prior-art@prior-art
 ```
 
 The plugin adds the Gate skill, the ADR skill, and the three-layer hook chain described below.
+
+## Audit
+
+`pa audit` scans a repo for hand-rolled code that an installed dependency or the standard library already covers. It works in two deterministic steps: mining candidates from a pattern catalog (JS/TS and Python), then resolving coverage against *your* installed dependencies and runtime — not a generic library list. It's designed to be verified by the model in-session via the `prior-art-audit` skill, which checks each finding against your code before proposing a fix.
+
+```bash
+pa audit                              # scan the current directory
+pa audit --dir ../other-repo --json   # audit another repo, machine-readable output
+pa audit --suggest                    # also flag well-known libraries you haven't installed
+pa audit --ci                         # exit 1 when high-confidence findings exist, for CI gates
+```
+
+Heuristics propose, the skill (or you) verify: every finding carries its claimed replacement and caveats, and false positives are expected — treat the output as a worklist, not an oracle.
 
 ## What works today
 
@@ -38,8 +51,8 @@ Honest inventory — what's shipped vs. what's planned.
 
 | Version | Ships |
 |---|---|
-| **v0.1** (today) | `pa report <pkg>` (7 ecosystems) · `pa init` · `pa adr new` / `pa adr list` · `pa stats` (ledger) · Claude Code plugin (Gate skill + ADR skill + 3-layer hooks) |
-| v0.2 | `pa audit` — wheel-reinvention detector |
+| v0.1 | `pa report <pkg>` (7 ecosystems) · `pa init` · `pa adr new` / `pa adr list` · `pa stats` (ledger) · Claude Code plugin (Gate skill + ADR skill + 3-layer hooks) |
+| **v0.2** (today) | `pa audit` — wheel-reinvention detector: finds hand-rolled code that installed deps or the stdlib already cover |
 | v0.3 | `pa search`, MCP server, knowledge packs |
 | v0.4 | GitHub Action, benchmark runner, public Wheel Reinvention Index |
 
@@ -99,7 +112,7 @@ Sensitivity is set via the `sensitivity` key in `.prior-art.json`; the default i
 
 Sequenced hardest-to-copy first, so the project stays worth using even if the easier parts get replicated elsewhere.
 
-- **v0.2 — audit.** The wheel-reinvention detector: scan a repository for hand-rolled code that an installed dependency or the standard library already covers, and produce a report with file/line findings and estimated lines saved. This is the killer feature.
+- **v0.2 — audit. Shipped.** The wheel-reinvention detector: scans a repository for hand-rolled code that an installed dependency or the standard library already covers, and produces a report with file/line findings and estimated lines saved. This is the killer feature.
 - **v0.3 — discovery.** A search pipeline across the repo, installed capabilities, registries, and GitHub; an MCP server exposing it as a tool; and the first knowledge packs (JS and Python).
 - **v0.4 — closing the loop.** A GitHub Action for PR-time dependency review and diff-level reinvention detection, the full benchmark runner, and the first public Wheel Reinvention Index.
 

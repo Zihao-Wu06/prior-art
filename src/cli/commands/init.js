@@ -72,10 +72,11 @@ export async function run(opts) {
   console.log(`
 Next steps:
   1. Install the Claude Code plugin:
-       /plugin marketplace add zihaowu/prior-art
+       /plugin marketplace add Zihao-Wu06/prior-art
        /plugin install prior-art@prior-art
   2. Using another agent (Codex, etc.)? Copy rules/prior-art.md into your AGENTS.md.
   3. Try it out:
        pa report <pkg>
-       pa adr new "<title>"`);
+       pa adr new "<title>"
+       pa audit`);
 }

@@ -2,7 +2,7 @@
 
 **「先查先例，再造轮子」**
 
-Prior Art 是一个证据引擎：在 AI coding agent 动手写代码之前，先逼它做一次"现有技术检索"——查有没有现成方案能满足需求，也查要新加的依赖是否经得起尽调，最后留下一条可审查的决策记录。今天能用的是复用阶梯、依赖尽调报告、决策注记和 ADR；v0.2 会加上"重造轮子审计"，v0.3 加发现引擎（MCP server + 知识包），v0.4 加 GitHub Action 和公开的 Wheel Reinvention Index。
+Prior Art 是一个证据引擎：在 AI coding agent 动手写代码之前，先逼它做一次"现有技术检索"——查有没有现成方案能满足需求，也查要新加的依赖是否经得起尽调，最后留下一条可审查的决策记录。今天能用的是复用阶梯、依赖尽调报告、决策注记与 ADR，以及"重造轮子审计"（`pa audit`）——找出你已装依赖或标准库早已覆盖、却被手搓出来的代码。接下来：v0.3 加发现引擎（MCP server + 知识包），v0.4 加 GitHub Action 和公开的 Wheel Reinvention Index。
 
 [English README](../README.md)
 
@@ -26,9 +26,22 @@ pa report zod
 在 Claude Code 里：
 
 ```
-/plugin marketplace add zihaowu/prior-art
+/plugin marketplace add Zihao-Wu06/prior-art
 /plugin install prior-art@prior-art
 ```
+
+## 审计
+
+`pa audit` 扫描仓库，找出已装依赖或标准库已经覆盖的手写代码。它分两步走：先从模式库中挖掘候选（覆盖 JS/TS 和 Python），再对照你项目**实际安装**的依赖和运行时做覆盖判定——不是查一份通用库列表。设计上由 `prior-art-audit` skill 在会话内逐条核实后再给出修复建议。
+
+```bash
+pa audit                              # 扫描当前目录
+pa audit --dir ../other-repo --json   # 审计另一个仓库，输出机器可读格式
+pa audit --suggest                    # 同时提示未安装的知名库
+pa audit --ci                         # 存在高置信度发现时以退出码 1 结束，用于 CI 门禁
+```
+
+启发式只负责提出候选，核实要靠 skill（或你自己）：每条发现都带着它声称的替代方案和注意事项，误报是预期中的事——把结果当待办清单，不要当结论。
 
 ## 复用阶梯（8 级）
 
@@ -49,8 +62,8 @@ pa report zod
 
 | 版本 | 内容 |
 |---|---|
-| **v0.1**（现在） | `pa report <pkg>`（覆盖 7 个生态）· `pa init` · `pa adr new` / `pa adr list` · `pa stats`（台账）· Claude Code 插件（Gate skill + ADR skill + 三层 hook） |
-| v0.2 | `pa audit` —— 重造轮子审计 |
+| v0.1 | `pa report <pkg>`（覆盖 7 个生态）· `pa init` · `pa adr new` / `pa adr list` · `pa stats`（台账）· Claude Code 插件（Gate skill + ADR skill + 三层 hook） |
+| **v0.2**（现在） | `pa audit` —— 重造轮子审计：找出已装依赖或标准库已经覆盖的手写代码 |
 | v0.3 | `pa search`、MCP server、知识包 |
 | v0.4 | GitHub Action、基准测试跑分器、公开的 Wheel Reinvention Index |
 
