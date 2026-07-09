@@ -2,7 +2,7 @@
 
 **Search prior art before you build.**
 
-Prior Art is an evidence engine that stops AI coding agents from reinventing the wheel. Today it gives you a reuse ladder, dependency due diligence, a decision-note format an ADR can point to, and a wheel-reinvention audit (`pa audit`) that finds hand-rolled code your installed dependencies or standard library already cover. Next up: a discovery pipeline with an MCP server and knowledge packs in v0.3, and a GitHub Action plus a public Wheel Reinvention Index in v0.4.
+Prior Art is an evidence engine that stops AI coding agents from reinventing the wheel. Today it gives you a reuse ladder, dependency due diligence, a decision-note format an ADR can point to, and a wheel-reinvention audit (`pa audit`) that finds hand-rolled code your installed dependencies or standard library already cover. It also searches for prior art on demand: `pa search "<what you need>"` sweeps your own repo, the package registry, and GitHub before you build. Next up: the installed-capability index, knowledge packs, and an MCP server complete v0.3; a GitHub Action plus a public Wheel Reinvention Index land in v0.4.
 
 ## Why
 
@@ -53,7 +53,8 @@ Honest inventory — what's shipped vs. what's planned.
 |---|---|
 | v0.1 | `pa report <pkg>` (7 ecosystems) · `pa init` · `pa adr new` / `pa adr list` · `pa stats` (ledger) · Claude Code plugin (Gate skill + ADR skill + 3-layer hooks) |
 | **v0.2** (today) | `pa audit` — wheel-reinvention detector: finds hand-rolled code that installed deps or the stdlib already cover |
-| v0.3 | `pa search`, MCP server, knowledge packs |
+| **v0.3** (today) | `pa search` — prior-art discovery across your repo, the package registry (npm/crates), and GitHub, with per-channel coverage honesty |
+| v0.3 (rest) | installed-capability index, knowledge packs, MCP server |
 | v0.4 | GitHub Action, benchmark runner, public Wheel Reinvention Index |
 
 ## The reuse ladder
@@ -113,7 +114,22 @@ Sensitivity is set via the `sensitivity` key in `.prior-art.json`; the default i
 Sequenced hardest-to-copy first, so the project stays worth using even if the easier parts get replicated elsewhere.
 
 - **v0.2 — audit. Shipped.** The wheel-reinvention detector: scans a repository for hand-rolled code that an installed dependency or the standard library already covers, and produces a report with file/line findings and estimated lines saved. This is the killer feature.
-- **v0.3 — discovery.** A search pipeline across the repo, installed capabilities, registries, and GitHub; an MCP server exposing it as a tool; and the first knowledge packs (JS and Python).
+- **v0.3 — discovery.** Shipping in slices: `pa search` (repo + registry + GitHub channels) is live. Still to come: the installed-capability index, the first knowledge packs (JS and Python), and an MCP server exposing the pipeline to any agent.
+
+## Search
+
+`pa search "<what you need>"` checks three places before you write or install anything:
+
+```
+pa search retry with exponential backoff
+pa search "markdown table parser" --eco cargo --limit 5
+```
+
+1. **This repo** — related definitions that already exist here (the cheapest rung).
+2. **The package registry** — npm or crates.io keyless search (PyPI has no keyless search API; the report says so instead of pretending).
+3. **GitHub** — top repositories by stars, with last-push date, license, and archived flags. Unauthenticated GitHub allows 10 searches/min; set `GITHUB_TOKEN` to raise it.
+
+Every result block ends with a coverage line naming the channels searched and skipped — an empty channel means "no match found there", never "no solution exists". Vet candidates with `pa report <pkg>` and record the call with `pa adr new`.
 - **v0.4 — closing the loop.** A GitHub Action for PR-time dependency review and diff-level reinvention detection, the full benchmark runner, and the first public Wheel Reinvention Index.
 
 ## Credits

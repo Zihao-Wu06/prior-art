@@ -23,7 +23,7 @@ Commands:
   stats                                   Show the prior-art ledger summary.
   stats record <type> <amount> [note…]    Manually record a ledger event.
   audit [--dir <path>]                    Scan for hand-rolled code your deps or stdlib already cover.
-  search                                  Prior-art discovery across sources (arrives in v0.3).
+  search <need words…>                    Search this repo, the registry, and GitHub for existing solutions.
   help                                    Show this help.
 
 Options:
@@ -36,6 +36,7 @@ Options:
   --include-tests       Include test files in the audit.
   --suggest             Also suggest well-known libraries that are not installed.
   --ci                  Exit 1 when high-confidence findings exist.
+  --limit <n>           Max results per search channel (default 8, max 20).
   --version, -v             Print the installed version.
 `;
 
@@ -56,7 +57,7 @@ export function parseArgv(argv) {
       i += 1;
       continue;
     }
-    if (arg === '--eco' || arg === '--rung' || arg === '--mode' || arg === '--dir') {
+    if (arg === '--eco' || arg === '--rung' || arg === '--mode' || arg === '--dir' || arg === '--limit') {
       const value = argv[i + 1];
       if (value === undefined || value.startsWith('--')) {
         throw { message: `${arg} requires a value`, exitCode: 1 };
@@ -87,14 +88,6 @@ function readVersion() {
   const pkgUrl = new URL('../../package.json', import.meta.url);
   const pkg = JSON.parse(readFileSync(pkgUrl, 'utf8'));
   return pkg.version;
-}
-
-function printSearch() {
-  console.log(
-    'pa search — the prior-art discovery search — arrives in v0.3.\n' +
-    'It will search for prior art across the repo, installed deps/MCP servers/skills, registries, GitHub, and knowledge packs.\n' +
-    'Follow the roadmap in README.md.'
-  );
 }
 
 /**
@@ -148,9 +141,17 @@ export async function main(argv) {
       await run(opts);
       break;
     }
-    case 'search':
-      printSearch();
+    case 'search': {
+      const need = positionals.join(' ').trim();
+      if (!need) {
+        console.log(USAGE);
+        process.exitCode = 1;
+        return;
+      }
+      const { run } = await import('./commands/search.js');
+      await run(need, opts);
       break;
+    }
     default:
       console.log(USAGE);
       process.exitCode = 1;

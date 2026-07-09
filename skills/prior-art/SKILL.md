@@ -48,7 +48,7 @@ When several options satisfy a rung, choose by the requirement's actual **shape*
 - **quick** (default): repo + installed capabilities + trusted knowledge. Seconds. Enough for most in-flight calls.
 - **full**: add registries, GitHub, and the web. Use it for any new-dependency decision, or whenever the user asks.
 
-Channels: `repo / installed deps / MCP+skills / registries / GitHub / knowledge`. (Run `pa audit` for wheels already built — it's available now. `pa search` for candidate discovery is still on the roadmap; until then, search the repo and installed capabilities directly and lean on `pa report` for anything you would add.)
+Channels: `repo / installed deps / MCP+skills / registries / GitHub / knowledge`. Run `pa audit` for wheels already built, and `pa search "<need>" [--eco npm|cargo] [--limit N]` for candidate discovery — it sweeps this repo, the package registry, and GitHub in one call and prints its own coverage line. Installed-capability and knowledge channels are still on the roadmap; check those directly for now, and vet anything you would add with `pa report`.
 
 **Coverage honesty (hard rule).** Every time you report what you found, end with one line naming the channels you actually searched and the ones you skipped and why:
 

@@ -2,7 +2,7 @@
 
 **「先查先例，再造轮子」**
 
-Prior Art 是一个证据引擎：在 AI coding agent 动手写代码之前，先逼它做一次"现有技术检索"——查有没有现成方案能满足需求，也查要新加的依赖是否经得起尽调，最后留下一条可审查的决策记录。今天能用的是复用阶梯、依赖尽调报告、决策注记与 ADR，以及"重造轮子审计"（`pa audit`）——找出你已装依赖或标准库早已覆盖、却被手搓出来的代码。接下来：v0.3 加发现引擎（MCP server + 知识包），v0.4 加 GitHub Action 和公开的 Wheel Reinvention Index。
+Prior Art 是一个证据引擎：在 AI coding agent 动手写代码之前，先逼它做一次"现有技术检索"——查有没有现成方案能满足需求，也查要新加的依赖是否经得起尽调，最后留下一条可审查的决策记录。今天能用的是复用阶梯、依赖尽调报告、决策注记与 ADR，以及"重造轮子审计"（`pa audit`）——找出你已装依赖或标准库早已覆盖、却被手搓出来的代码。现在还能按需检索先例：`pa search "你要的能力"` 一次扫过本仓库、包注册表和 GitHub。接下来补齐 v0.3 的已装能力索引、知识包与 MCP server；v0.4 加 GitHub Action 和公开的 Wheel Reinvention Index。
 
 [English README](../README.md)
 
@@ -64,7 +64,8 @@ pa audit --ci                         # 存在高置信度发现时以退出码 
 |---|---|
 | v0.1 | `pa report <pkg>`（覆盖 7 个生态）· `pa init` · `pa adr new` / `pa adr list` · `pa stats`（台账）· Claude Code 插件（Gate skill + ADR skill + 三层 hook） |
 | **v0.2**（现在） | `pa audit` —— 重造轮子审计：找出已装依赖或标准库已经覆盖的手写代码 |
-| v0.3 | `pa search`、MCP server、知识包 |
+| **v0.3**（现在） | `pa search` 先例检索——本仓库 + 注册表（npm/crates）+ GitHub 三通道，逐通道覆盖声明 |
+| v0.3（剩余） | 已装能力索引、知识包、MCP server |
 | v0.4 | GitHub Action、基准测试跑分器、公开的 Wheel Reinvention Index |
 
 ## 灵敏度分级
