@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 — 2026-07-09
+
+- security/correctness fixes from the v0.3 cross-vendor review: GitHub search
+  qualifier injection neutralized (user:/language:/stars: in a need is now
+  literal text), and the HTTP cache is partitioned by auth mode so token-scoped
+  GitHub results can never replay into unauthenticated runs
+
 ## 0.3.0 — 2026-07-09
 
 - `pa search "<need>"`: prior-art discovery across three channels — this repo

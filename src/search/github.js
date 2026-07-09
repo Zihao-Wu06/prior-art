@@ -9,9 +9,18 @@ import { cachedFetchJson } from '../data/cache.js';
 
 const SEARCH_TTL_MS = 3600000; // search results age fast; cache 1h, not 24h
 
+/**
+ * Neutralize GitHub search-qualifier syntax in a natural-language need:
+ * `user:x`, `language:go`, `stars:>100`, quoting — a need is literal text for
+ * us, never a qualifier expression.
+ */
+export function sanitizeNeed(need) {
+  return String(need).replace(/["':<>=]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /** Build the GitHub search URL for a natural-language need. */
 export function buildGitHubSearchUrl(need, limit) {
-  const q = encodeURIComponent(String(need).trim());
+  const q = encodeURIComponent(sanitizeNeed(need));
   return `https://api.github.com/search/repositories?q=${q}&sort=stars&order=desc&per_page=${limit}`;
 }
 
@@ -39,7 +48,14 @@ export async function searchGitHubRepos(need, { limit = 8, fresh = false } = {})
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
   try {
-    const res = await cachedFetchJson(buildGitHubSearchUrl(need, limit), { ttlMs: SEARCH_TTL_MS, fresh, headers });
+    // Partition the cache by auth mode: token-scoped results must never be
+    // replayed for an unauthenticated run (or vice versa).
+    const res = await cachedFetchJson(buildGitHubSearchUrl(need, limit), {
+      ttlMs: SEARCH_TTL_MS,
+      fresh,
+      headers,
+      cacheKeyExtra: token ? 'gh-auth' : 'gh-anon'
+    });
     if (res.status === 404 || !res.data) {
       return { status: 'skipped', reason: 'GitHub search returned no payload', results: [] };
     }

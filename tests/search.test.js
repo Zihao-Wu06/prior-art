@@ -7,7 +7,8 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { buildGitHubSearchUrl, normalizeGitHubResults } from '../src/search/github.js';
+import { buildGitHubSearchUrl, normalizeGitHubResults, sanitizeNeed } from '../src/search/github.js';
+import { cacheFile } from '../src/data/cache.js';
 import { buildNpmSearchUrl, normalizeNpmResults, normalizeCratesResults, searchRegistry } from '../src/search/registries.js';
 import { tokenizeNeed, searchRepo } from '../src/search/local.js';
 
@@ -16,6 +17,21 @@ test('github: search URL encodes the need and applies the limit', () => {
   assert.match(url, /per_page=5/);
   assert.match(url, /retry%20with%20backoff%20%26%20jitter/);
   assert.match(url, /sort=stars/);
+});
+
+test('github: qualifier syntax is neutralized, never forwarded (review: injection)', () => {
+  assert.equal(sanitizeNeed('retry backoff user:no-such-user'), 'retry backoff user no-such-user');
+  assert.equal(sanitizeNeed('http "client" stars:>100 language:go'), 'http client stars 100 language go');
+  const url = buildGitHubSearchUrl('retry user:evil', 5);
+  assert.ok(!url.includes('%3A'), 'no encoded colon may reach GitHub');
+});
+
+test('cache: auth mode partitions the cache key (review: token replay)', () => {
+  const anon = cacheFile('GET', 'https://api.github.com/x', undefined, 'gh-anon');
+  const auth = cacheFile('GET', 'https://api.github.com/x', undefined, 'gh-auth');
+  const bare = cacheFile('GET', 'https://api.github.com/x', undefined, undefined);
+  assert.notEqual(anon, auth);
+  assert.notEqual(anon, bare);
 });
 
 test('github: results normalize with license/archived handling', () => {

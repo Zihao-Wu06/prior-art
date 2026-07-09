@@ -1,5 +1,5 @@
 {
   "name": "prior-art",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Search prior art before you build — reuse ladder, dependency due diligence, decision notes, the wheel-reinvention audit (pa audit), and prior-art search across your repo, registries, and GitHub (pa search)."
 }

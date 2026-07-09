@@ -13,8 +13,8 @@ const CACHE_DIR = join(homedir(), '.cache', 'priorart', 'http');
 // stay "not found" for a full day just because we asked too early.
 const NEGATIVE_TTL_MS = 300000;
 
-function cacheFile(method, url, body) {
-  const key = createHash('sha256').update(`${method} ${url} ${body || ''}`).digest('hex').slice(0, 32);
+export function cacheFile(method, url, body, keyExtra) {
+  const key = createHash('sha256').update(`${method} ${url} ${body || ''} ${keyExtra || ''}`).digest('hex').slice(0, 32);
   return join(CACHE_DIR, `${key}.json`);
 }
 
@@ -43,9 +43,9 @@ function writeEntry(file, entry) {
  * @param {{ttlMs?: number, fresh?: boolean, method?: string, body?: any, headers?: Record<string,string>}} [opts]
  * @returns {Promise<{status: number, data: any, fromCache: boolean}>}
  */
-export async function cachedFetchJson(url, { ttlMs = 86400000, fresh = false, method = 'GET', body, headers } = {}) {
+export async function cachedFetchJson(url, { ttlMs = 86400000, fresh = false, method = 'GET', body, headers, cacheKeyExtra } = {}) {
   const bodyStr = body === undefined ? undefined : JSON.stringify(body);
-  const file = cacheFile(method, url, bodyStr);
+  const file = cacheFile(method, url, bodyStr, cacheKeyExtra);
 
   if (!fresh) {
     const cached = readEntry(file);
