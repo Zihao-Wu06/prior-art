@@ -1,0 +1,4 @@
+node_modules/
+.prior-art/ledger.json
+*.log
+.DS_Store

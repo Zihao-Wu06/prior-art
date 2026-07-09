@@ -1,0 +1,19 @@
+# EXAMPLE SEED — illustrates the intended shape for the v0.3 knowledge pack
+# format described in knowledge/README.md. Not yet consumed by any command.
+
+capability: date handling
+ecosystem: js
+updated: 2026-07-09
+
+recommend:
+  - name: Temporal
+    why: Built-in, Stage-4-era JavaScript platform API for dates and times — no dependency at all once available.
+    caveat: Check runtime support before relying on it; fall back to date-fns if the target runtime doesn't ship it yet.
+  - name: date-fns
+    why: Modular and tree-shakeable — import only the functions you use.
+  - name: dayjs
+    why: Tiny footprint with a moment-compatible API — an easy migration target if you're moving off moment.
+
+avoid:
+  - name: moment
+    why: In maintenance mode since 2020; the project itself recommends against new usage.

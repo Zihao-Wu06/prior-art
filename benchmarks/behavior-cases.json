@@ -1,0 +1,86 @@
+{
+  "description": "Trap tasks for measuring whether the Prior Art gate changes agent behavior. Run each prompt baseline vs with the gate enabled; score rung/mode correctness, decision-note quality, and diff size. Harness ships in v0.4.",
+  "cases": [
+    {
+      "id": "uuid-helper",
+      "prompt": "Add a helper that generates unique IDs for uploaded files.",
+      "context": "Node 20 backend",
+      "expectedRung": "built-in",
+      "expectedMode": "adopt",
+      "baselineRisk": "installs uuid or hand-rolls an ID generator",
+      "expectation": "crypto.randomUUID covers it."
+    },
+    {
+      "id": "copy-to-clipboard",
+      "prompt": "Add a copy-to-clipboard button to the settings page.",
+      "context": "modern browsers only",
+      "expectedRung": "native-platform",
+      "expectedMode": "adopt",
+      "baselineRisk": "adds clipboard-copy lib or a custom textarea hack",
+      "expectation": "navigator.clipboard.writeText plus a small fallback note."
+    },
+    {
+      "id": "slugify-with-lodash",
+      "prompt": "Add a slugify util for article URLs.",
+      "context": "package.json already includes lodash",
+      "expectedRung": "installed-capability",
+      "expectedMode": "adopt",
+      "baselineRisk": "adds slugify dep or writes a regex util",
+      "expectation": "lodash.kebabCase (already installed) is sufficient."
+    },
+    {
+      "id": "pr-status-via-mcp",
+      "prompt": "Show whether the current PR passed CI in my workflow summary.",
+      "context": "GitHub MCP server is connected",
+      "expectedRung": "installed-capability",
+      "expectedMode": "adopt",
+      "baselineRisk": "writes a REST client with auth handling",
+      "expectation": "the connected MCP already exposes PR checks."
+    },
+    {
+      "id": "url-shortener",
+      "prompt": "Build an internal URL shortener service for the team.",
+      "context": "small team, self-hosting OK",
+      "expectedRung": "existing-solution",
+      "expectedMode": "adopt",
+      "baselineRisk": "greenfields a full web service",
+      "expectation": "deploy an existing self-hostable shortener; build only the SSO glue if needed."
+    },
+    {
+      "id": "retry-backoff",
+      "prompt": "Add retry with exponential backoff and jitter to outbound API calls.",
+      "context": "Python service, adding a dep is acceptable",
+      "expectedRung": "open-source",
+      "expectedMode": "adopt",
+      "baselineRisk": "hand-rolls sleep loops in every call site",
+      "expectation": "a mature retry library (e.g. tenacity-class) centralizes edge cases."
+    },
+    {
+      "id": "transactional-email",
+      "prompt": "Implement password-reset email delivery.",
+      "context": "production SaaS",
+      "expectedRung": "commercial",
+      "expectedMode": "adopt",
+      "baselineRisk": "builds SMTP delivery and owns deliverability, bounce and compliance",
+      "expectation": "a reputable email service unless constraints force owning delivery."
+    },
+    {
+      "id": "proprietary-scoring",
+      "prompt": "Implement our proprietary relevance-scoring formula that differentiates the product.",
+      "context": "the formula is the moat",
+      "expectedRung": "in-house",
+      "expectedMode": "build",
+      "baselineRisk": "outsources core logic to a generic rules engine",
+      "expectation": "build in-house with tests; this is core differentiation."
+    },
+    {
+      "id": "speculative-config",
+      "prompt": "Add a plugin system to the config loader — we might need it next quarter.",
+      "context": "no current requirement",
+      "expectedRung": "do-nothing",
+      "expectedMode": "adopt",
+      "baselineRisk": "ships an abstraction nobody asked for",
+      "expectation": "skip speculative scaffolding; note the trigger that would justify it."
+    }
+  ]
+}

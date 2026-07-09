@@ -1,0 +1,13 @@
+{
+  "name": "prior-art",
+  "owner": {
+    "name": "Zihao Wu"
+  },
+  "plugins": [
+    {
+      "name": "prior-art",
+      "source": "./",
+      "description": "Search prior art before you build — reuse ladder, dependency due diligence, and decision notes for AI coding agents."
+    }
+  ]
+}

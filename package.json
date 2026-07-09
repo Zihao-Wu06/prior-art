@@ -1,0 +1,43 @@
+{
+  "name": "priorart",
+  "version": "0.1.0",
+  "description": "Search prior art before you build. An evidence engine that stops AI coding agents from reinventing the wheel.",
+  "type": "module",
+  "bin": {
+    "priorart": "src/cli/index.js",
+    "pa": "src/cli/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "mcp",
+    "dependencies",
+    "software-supply-chain",
+    "buy-vs-build",
+    "prior-art",
+    "agents-md"
+  ],
+  "author": "Zihao Wu",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zihaowu/prior-art"
+  },
+  "files": [
+    "src",
+    "skills",
+    "hooks",
+    "rules",
+    "knowledge",
+    "docs/decisions/0000-template.md",
+    "README.md",
+    "LICENSE"
+  ]
+}

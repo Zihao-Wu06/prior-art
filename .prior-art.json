@@ -1,0 +1,8 @@
+{
+  "sensitivity": "standard",
+  "strictness": "standard",
+  "priorities": ["zero runtime dependencies", "keyless public APIs only", "no build step"],
+  "alwaysBuild": ["the ladder engine, decision-note format, and signal assessors"],
+  "alwaysReuse": ["node:test for tests", "GitHub Actions for CI", "deps.dev / OSV.dev for package signals"],
+  "notes": "Dogfood config for prior-art itself. This project ships zero runtime dependencies on purpose: a tool about dependency discipline must walk its own talk."
+}
