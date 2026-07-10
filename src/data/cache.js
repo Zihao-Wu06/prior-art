@@ -60,9 +60,11 @@ export async function cachedFetchJson(url, { ttlMs = 86400000, fresh = false, me
 
   let res;
   try {
-    res = await fetch(url, { method, headers: fetchHeaders, body: bodyStr });
+    // Bounded wait: a CLI hanging on undici's 300s default reads as dead.
+    res = await fetch(url, { method, headers: fetchHeaders, body: bodyStr, signal: AbortSignal.timeout(15000) });
   } catch (err) {
-    throw new Error(`${method} ${url} -> ${err.message}`, { cause: err });
+    const why = err && err.name === 'TimeoutError' ? 'timed out after 15s' : err.message;
+    throw new Error(`${method} ${url} -> ${why}`, { cause: err });
   }
 
   if (res.status === 404) {

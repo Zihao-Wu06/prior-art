@@ -116,7 +116,7 @@ These are the things a model tells itself right before it reinvents a wheel. Nam
 ## Guardrails
 
 - Never outsource **core differentiation**, **trust-boundary or security logic**, or **code small and clear enough to beat the cost of a dependency**.
-- Never reimplement anything matching `alwaysReuse`; never outsource anything matching `alwaysBuild`; honor `bannedDeps`, `preferredDeps`, and the license allowlist in `.prior-art.json`.
+- Never reimplement anything matching `alwaysReuse`; never outsource anything matching `alwaysBuild`; weight tradeoffs by the project's `priorities`. (All three lists live in `.prior-art.json`.)
 
 ## Verify it paid off
 

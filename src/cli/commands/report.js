@@ -76,7 +76,7 @@ export async function run(name, opts) {
   }
 
   try {
-    const osvRes = await queryOsv(system, name, fetchOpts);
+    const osvRes = await queryOsv(system, name, latestVersion || null, fetchOpts);
     Object.assign(signals, assessOsv(osvRes.data));
   } catch {
     skipped.push('OSV');

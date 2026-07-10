@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULTS, SENSITIVITY_LEVELS, loadConfig } from '../src/core/config.js';
+import { DEFAULTS, SENSITIVITY_LEVELS, loadConfig, findProjectRoot } from '../src/core/config.js';
 
 test('DEFAULTS contract', () => {
   assert.deepEqual(DEFAULTS, {
@@ -55,6 +55,34 @@ test('loadConfig finds a file in startDir itself, not only ancestors', () => {
     const cfg = loadConfig(dir);
     assert.equal(cfg.sensitivity, 'off');
     assert.equal(cfg._path, configPath);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('full-review: sensitivity is normalized and validated', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'priorart-config-'));
+  try {
+    writeFileSync(join(dir, '.prior-art.json'), JSON.stringify({ sensitivity: 'Strict' }));
+    assert.equal(loadConfig(dir).sensitivity, 'strict');
+    writeFileSync(join(dir, '.prior-art.json'), JSON.stringify({ sensitivity: 'aggressive' }));
+    const cfg = loadConfig(dir);
+    assert.equal(cfg.sensitivity, DEFAULTS.sensitivity);
+    assert.match(cfg._warning, /invalid sensitivity/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('full-review: findProjectRoot resolves to the config owner from a subdir', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'priorart-root-'));
+  try {
+    const nested = join(dir, 'src', 'deep');
+    mkdirSync(nested, { recursive: true });
+    writeFileSync(join(dir, '.prior-art.json'), '{}');
+    assert.equal(findProjectRoot(nested), dir);
+    const bare = mkdtempSync(join(tmpdir(), 'priorart-bare-'));
+    assert.equal(findProjectRoot(bare), bare);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

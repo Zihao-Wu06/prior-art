@@ -44,6 +44,8 @@ const NOTE_PATTERN =
 /**
  * Parse a decision note produced by formatDecisionNote (tolerant of surrounding text).
  * Never throws: non-matching text or an invalid rung both yield null.
+ * No in-repo caller yet by design — the v0.4 PR check consumes this; it is
+ * kept public and tested as the stable counterpart of formatDecisionNote.
  * @param {string} text
  * @returns {{rung: string, option: string, mode: string|null, tradeoff: string, rejected: string, revisit: string}|null}
  */

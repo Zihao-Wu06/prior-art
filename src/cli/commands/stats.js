@@ -1,4 +1,5 @@
 import { EVENT_TYPES, recordEvent, summarize } from '../../core/ledger.js';
+import { findProjectRoot } from '../../core/config.js';
 
 const FRIENDLY_LABELS = {
   'lines-avoided': 'lines avoided',
@@ -15,7 +16,9 @@ const FRIENDLY_LABELS = {
  * @param {string[]} positionals - e.g. `['record', type, amount, ...noteWords]`.
  */
 export async function run(opts, positionals) {
-  const cwd = process.cwd();
+  // The ledger lives at the project root (the dir owning .prior-art.json) so
+  // a `pa stats record` from src/ never creates a second ledger.
+  const cwd = findProjectRoot(process.cwd());
 
   if (positionals[0] === 'record') {
     runRecord(cwd, positionals.slice(1));

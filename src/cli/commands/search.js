@@ -100,7 +100,7 @@ function renderHuman({ need, eco, repo, registry, github, notSearched }) {
   lines.push('');
 
   const searched = [
-    repo.status === 'ok' ? `repo (${repo.filesScanned} files)` : null,
+    repo.status === 'ok' ? `repo (${repo.filesScanned} js/py files — other languages not scanned locally)` : null,
     registry.status === 'ok' ? `${registry.registry} registry (top ${registry.results.length})` : null,
     github.status === 'ok' ? `GitHub (top ${github.results.length}${github.totalCount ? ` of ${github.totalCount}` : ''})` : null
   ].filter(Boolean);

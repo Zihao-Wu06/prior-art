@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { RUNGS, isValidRung, INTEGRATION_MODES } from '../../core/ladder.js';
+import { findProjectRoot } from '../../core/config.js';
+import { ADR_TEMPLATE } from '../../core/adr-template.js';
 
 const DECISIONS_DIR = 'docs/decisions';
 const TEMPLATE_NAME = '0000-template.md';
@@ -12,7 +14,7 @@ const TEMPLATE_NAME = '0000-template.md';
  * @param {Record<string, string|boolean>} opts - `--rung`, `--mode`.
  */
 export async function run(sub, positionals, opts) {
-  const dir = join(process.cwd(), DECISIONS_DIR);
+  const dir = join(findProjectRoot(process.cwd()), DECISIONS_DIR);
   if (!existsSync(dir)) {
     throw { message: 'docs/decisions not found — run `pa init` first', exitCode: 2 };
   }
@@ -56,8 +58,10 @@ async function runNew(dir, positionals, opts) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 60);
 
+  // Prefer the scaffolded template (users may customize it); fall back to the
+  // built-in so a missing file can never block recording a decision.
   const templatePath = join(dir, TEMPLATE_NAME);
-  let content = readFileSync(templatePath, 'utf8');
+  let content = existsSync(templatePath) ? readFileSync(templatePath, 'utf8') : ADR_TEMPLATE;
 
   content = content.replace('NNNN. <title>', `${nnnn}. ${title}`);
 

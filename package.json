@@ -1,6 +1,6 @@
 {
   "name": "priorart",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Search prior art before you build. An evidence engine that stops AI coding agents from reinventing the wheel.",
   "type": "module",
   "bin": {

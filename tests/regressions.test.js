@@ -16,6 +16,14 @@ test('parseArgv rejects value flags without a value (review #4)', () => {
   assert.throws(() => parseArgv(['adr', 'new', 't', '--rung', '--mode', 'adopt']));
 });
 
+test('full-review: unknown flags are rejected, never swallowed as positionals', () => {
+  assert.throws(() => parseArgv(['search', 'retry backoff', '--lmit', '3']));
+  assert.throws(() => parseArgv(['adr', 'list', '--stauts']));
+  // `--` ends option parsing so literal leading-dash words stay searchable.
+  const r = parseArgv(['search', '--', '-webkit-mask', 'support']);
+  assert.deepEqual(r.positionals, ['-webkit-mask', 'support']);
+});
+
 test('parseArgv still parses valid flag/positional mixes', () => {
   const r = parseArgv(['report', 'zod', '--eco', 'npm', '--json']);
   assert.equal(r.command, 'report');

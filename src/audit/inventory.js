@@ -16,17 +16,24 @@ function normalizePyName(raw) {
   return name;
 }
 
-/** Pull dependency names out of package.json, [] when absent/malformed. */
-function readNpmDeps(rootDir) {
+/** Read deps (runtime vs dev split), and the engines.node floor, from package.json. */
+function readPackageManifest(rootDir) {
+  const empty = { runtimeDeps: [], devDeps: [], nodeRequires: null };
   try {
     const pkg = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf8'));
-    return [
-      ...Object.keys(pkg.dependencies || {}),
-      ...Object.keys(pkg.devDependencies || {}),
-      ...Object.keys(pkg.peerDependencies || {})
-    ];
+    const engines = pkg.engines && pkg.engines.node;
+    return {
+      // Coverage resolution uses runtime deps only: recommending a
+      // devDependency inside shipped code would itself introduce a bug.
+      runtimeDeps: [...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.peerDependencies || {})],
+      devDeps: Object.keys(pkg.devDependencies || {}),
+      // '>=16.14 <21' → '16.14': the declared floor of the AUDITED project,
+      // which is the right baseline for built-in availability — not the
+      // Node version that happens to be running this CLI.
+      nodeRequires: engines ? (String(engines).match(/(\d+(?:\.\d+)?)/) || [])[1] || null : null
+    };
   } catch {
-    return [];
+    return empty;
   }
 }
 
@@ -76,7 +83,7 @@ function readPyDeps(rootDir, manifests) {
 /**
  * Build the audit inventory for a project directory.
  * @param {string} rootDir
- * @returns {{languages: string[], node: {version: string, major: number}, npmDeps: string[], pyDeps: string[], pythonRequires: string|null, manifests: string[]}}
+ * @returns {{languages: string[], node: {version: string, major: number}, npmDeps: string[], npmDevDeps: string[], nodeRequires: string|null, pyDeps: string[], pythonRequires: string|null, manifests: string[]}}
  */
 export function buildInventory(rootDir) {
   const manifests = [];
@@ -85,7 +92,8 @@ export function buildInventory(rootDir) {
   const hasPackageJson = existsSync(join(rootDir, 'package.json'));
   if (hasPackageJson) manifests.push('package.json');
 
-  const npmDeps = hasPackageJson ? readNpmDeps(rootDir) : [];
+  const manifest = hasPackageJson ? readPackageManifest(rootDir) : { runtimeDeps: [], devDeps: [], nodeRequires: null };
+  const npmDeps = manifest.runtimeDeps;
   const py = readPyDeps(rootDir, manifests);
   const pyDeps = py.deps;
   const hasPyManifest = manifests.some(m => m !== 'package.json');
@@ -120,6 +128,8 @@ export function buildInventory(rootDir) {
     languages,
     node: { version: process.version, major: Number(process.version.slice(1).split('.')[0]) },
     npmDeps,
+    npmDevDeps: manifest.devDeps,
+    nodeRequires: manifest.nodeRequires,
     pyDeps,
     pythonRequires: py.pythonRequires,
     manifests

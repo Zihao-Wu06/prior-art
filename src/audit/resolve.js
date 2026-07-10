@@ -63,7 +63,10 @@ export function resolveFinding(match, pattern, inventory, { suggest = false } = 
       return { ...base, level: 'info', action: 'use-builtin', coveredBy: `built-in ${builtin.api} requires Python ≥ ${sincePy} (${reason})` };
     }
     const since = builtin.since && builtin.since.node;
-    if (!since || nodeSatisfies(since, inventory.node.version)) {
+    // Baseline is the AUDITED project's declared floor (engines.node) when it
+    // has one; only projects without a floor fall back to the CLI's runtime.
+    const nodeFloor = inventory.nodeRequires || inventory.node.version;
+    if (!since || nodeSatisfies(since, nodeFloor)) {
       const suffix = since ? ` — Node ≥ ${since}` : '';
       return { ...base, level: 'high', action: 'use-builtin', coveredBy: `built-in ${builtin.api}${suffix}` };
     }
@@ -77,7 +80,9 @@ export function resolveFinding(match, pattern, inventory, { suggest = false } = 
       ...base,
       level: 'info',
       action: 'use-builtin',
-      coveredBy: `built-in ${builtin.api} requires Node ≥ ${since} (current v${inventory.node.major})`
+      coveredBy: inventory.nodeRequires
+        ? `built-in ${builtin.api} requires Node ≥ ${since} (project engines.node allows ≥ ${inventory.nodeRequires})`
+        : `built-in ${builtin.api} requires Node ≥ ${since} (current v${inventory.node.major})`
     };
   }
 

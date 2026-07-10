@@ -40,7 +40,10 @@ test('inventory: reads npm and python deps, normalizes names', () => {
   writeFileSync(join(dir, 'requirements.txt'), '# comment\nTenacity>=8.0\npython_slugify[unicode]==8.0 ; python_version > "3.8"\n-r other.txt\n');
   const inv = buildInventory(dir);
   assert.ok(inv.npmDeps.includes('lodash'));
-  assert.ok(inv.npmDeps.includes('vitest'));
+  // devDependencies are inventoried separately: recommending a devDep in
+  // runtime code would itself introduce a bug (full review 2026-07-10).
+  assert.ok(!inv.npmDeps.includes('vitest'));
+  assert.ok(inv.npmDevDeps.includes('vitest'));
   assert.ok(inv.pyDeps.includes('tenacity'));
   assert.ok(inv.pyDeps.includes('python-slugify'));
   assert.ok(inv.languages.includes('js'));
@@ -226,6 +229,35 @@ test('review: .mts/.cts are collected, .d.mts is not', () => {
   writeFileSync(join(dir, 'src', 'c.d.mts'), 'x');
   const { files } = collectSourceFiles(dir);
   assert.deepEqual(files.map(f => f.rel).sort(), ['src/a.mts', 'src/b.cts']);
+});
+
+test('full-review: engines.node floor is parsed and gates JS builtins', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pa-eng-'));
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ engines: { node: '>=16.14 <21' }, dependencies: {} }));
+  const inv = buildInventory(dir);
+  assert.equal(inv.nodeRequires, '16.14');
+
+  const pattern = {
+    id: 'fx-withresolvers', title: 'Deferred', langs: ['js'], category: 'async',
+    namePattern: /^deferred$/i, nameOnly: true, bodyHints: [],
+    coveredBy: { builtin: { name: 'Promise.withResolvers', api: 'Promise.withResolvers()', since: { node: 22 } } }
+  };
+  const match = { patternId: 'fx-withresolvers', line: 1, snippet: 's', via: 'name', blockLines: 2, file: 'src/a.js' };
+  // Project floor 16.14 < required 22 → info, even on a Node 22 machine.
+  const gated = resolveFinding(match, pattern, { ...INV22, nodeRequires: '16.14' });
+  assert.equal(gated.level, 'info');
+  assert.match(gated.coveredBy, /engines\.node allows ≥ 16\.14/);
+  // No declared floor → the running Node (22) is the proxy → high.
+  const proxy = resolveFinding(match, pattern, { ...INV22, nodeRequires: null });
+  assert.equal(proxy.level, 'high');
+});
+
+test('full-review: OSV query body is version-scoped when a version is known', async () => {
+  const { buildOsvQueryBody } = await import('../src/data/sources.js');
+  assert.deepEqual(buildOsvQueryBody('npm', 'lodash', '4.18.1'),
+    { package: { name: 'lodash', ecosystem: 'npm' }, version: '4.18.1' });
+  assert.deepEqual(buildOsvQueryBody('pypi', 'requests', null),
+    { package: { name: 'requests', ecosystem: 'PyPI' } });
 });
 
 test('review: pyproject requires-python is parsed', () => {

@@ -42,8 +42,31 @@ export function loadConfig(startDir = process.cwd()) {
 
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf8'));
-    return { ...DEFAULTS, ...parsed, _path: path };
+    const merged = { ...DEFAULTS, ...parsed, _path: path };
+    if (parsed.sensitivity !== undefined) {
+      const norm = String(parsed.sensitivity).toLowerCase();
+      if (SENSITIVITY_LEVELS.includes(norm)) {
+        merged.sensitivity = norm;
+      } else {
+        merged.sensitivity = DEFAULTS.sensitivity;
+        merged._warning = `invalid sensitivity "${parsed.sensitivity}" — using "${DEFAULTS.sensitivity}" (valid: ${SENSITIVITY_LEVELS.join('|')})`;
+      }
+    }
+    return merged;
   } catch (err) {
     return { ...DEFAULTS, _path: null, _error: err.message };
   }
+}
+
+/**
+ * The project root is the directory owning `.prior-art.json` (walking up),
+ * falling back to startDir when no config exists. Every command that writes
+ * project state (the ledger, ADRs) must resolve through this so that a run
+ * from `src/` can never create a second ledger or decisions dir.
+ * @param {string} [startDir]
+ * @returns {string}
+ */
+export function findProjectRoot(startDir = process.cwd()) {
+  const cfg = loadConfig(startDir);
+  return cfg._path ? dirname(cfg._path) : resolve(startDir);
 }

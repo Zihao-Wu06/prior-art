@@ -69,18 +69,34 @@ export async function fetchProject(projectId, opts = {}) {
 }
 
 /**
- * Query OSV.dev for known vulnerabilities affecting a package.
+ * Build the OSV query body. Version-scoped when a version is known: a
+ * versionless OSV query returns every vulnerability in the package's history
+ * — including long-fixed ones — which is misinformation when attributed to
+ * the current release.
  * @param {string} system
  * @param {string} name
+ * @param {string|null} [version]
+ */
+export function buildOsvQueryBody(system, name, version) {
+  const ecosystem = requireSystem(system).osv;
+  const body = { package: { name, ecosystem } };
+  if (version) body.version = version;
+  return body;
+}
+
+/**
+ * Query OSV.dev for known vulnerabilities affecting a package version.
+ * @param {string} system
+ * @param {string} name
+ * @param {string|null} version - scope the query; null falls back to full history
  * @param {{fresh?: boolean}} [opts]
  * @returns {Promise<{status: number, data: any, fromCache: boolean}>}
  */
-export async function queryOsv(system, name, opts = {}) {
-  const ecosystem = requireSystem(system).osv;
+export async function queryOsv(system, name, version, opts = {}) {
   return cachedFetchJson(OSV_QUERY_URL, {
     ...opts,
     method: 'POST',
-    body: { package: { name, ecosystem } }
+    body: buildOsvQueryBody(system, name, version)
   });
 }
 

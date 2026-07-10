@@ -81,6 +81,16 @@ export function parseArgv(argv) {
       i += 1;
       continue;
     }
+    if (arg === '--') {
+      // end-of-options: everything after is literal positionals
+      positionals.push(...argv.slice(i + 1));
+      break;
+    }
+    if (arg.startsWith('-') && arg.length > 1) {
+      // A silently swallowed typo (--lmit) is worse than an error for a tool
+      // agents drive programmatically.
+      throw { message: `unknown option ${arg} — see \`pa help\` (use \`--\` before literal leading-dash words)`, exitCode: 1 };
+    }
     positionals.push(arg);
     i += 1;
   }

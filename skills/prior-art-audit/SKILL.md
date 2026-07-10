@@ -15,7 +15,7 @@ Treat every candidate as unproven until you have read the code.
 pa audit --json
 ```
 
-Pass through what the user asked for: `--dir <path>` to scope the scan, `--include-tests` to cover test files (off by default — test fixtures are full of intentional throwaway code), `--suggest` to have the engine print a candidate diff. Take findings **highest-severity first**; a long tail of `clamp`-style two-liners rarely repays the same scrutiny as a hand-rolled deep clone or retry loop.
+Pass through what the user asked for: `--dir <path>` to scope the scan, `--include-tests` to cover test files (off by default — test fixtures are full of intentional throwaway code), `--suggest` to also surface well-known libraries that are NOT installed (info-level; adopting one is a new-dependency decision that needs `pa report` first). Take findings **highest-severity first**; a long tail of `clamp`-style two-liners rarely repays the same scrutiny as a hand-rolled deep clone or retry loop.
 
 ## Verify each finding
 

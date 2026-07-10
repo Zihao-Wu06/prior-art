@@ -27,4 +27,4 @@ The cheapest code is code you don't own — but every dependency is ownership to
 
 Rung ids: `do-nothing, built-in, native-platform, installed-capability, existing-solution, open-source, commercial, in-house`. Modes: `adopt, extend, compose, build`. Durable, contested, or architectural decisions get an ADR: `pa adr new "<title>" --rung <id> --mode <id>`.
 
-**Guardrails.** Never outsource core differentiation, trust-boundary or security logic, or tiny code clearer than a dependency; never reimplement `alwaysReuse` items or outsource `alwaysBuild` items; respect `bannedDeps`, `preferredDeps`, and the license allowlist in `.prior-art.json`.
+**Guardrails.** Never outsource core differentiation, trust-boundary or security logic, or tiny code clearer than a dependency; never reimplement `alwaysReuse` items or outsource `alwaysBuild` items (both lists live in `.prior-art.json`, alongside `priorities` that weight the tradeoff).

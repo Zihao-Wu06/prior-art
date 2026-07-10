@@ -2,8 +2,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import { patternsForLang } from '../../audit/patterns.js';
 import { buildInventory } from '../../audit/inventory.js';
-import { collectSourceFiles, DEFAULT_IGNORE_DIRS } from '../../audit/scanner.js';
-import { scanFile } from '../../audit/scanner.js';
+import { collectSourceFiles, scanFile, DEFAULT_IGNORE_DIRS } from '../../audit/scanner.js';
 import { resolveFinding } from '../../audit/resolve.js';
 
 const LEVEL_ORDER = { high: 0, info: 1 };
