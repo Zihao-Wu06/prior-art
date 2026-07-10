@@ -16,21 +16,47 @@ function normalizePyName(raw) {
   return name;
 }
 
-/** Read deps (runtime vs dev split), and the engines.node floor, from package.json. */
+/**
+ * The lowest Node version a semver range admits — the right baseline for
+ * built-in availability. Handles OR alternatives: the floor of
+ * '>=22 <23 || >=20 <21' is 20, not 22. Upper bounds (< / <=) are ignored;
+ * a branch with no lower bound means "no floor" for the whole range.
+ */
+export function enginesFloor(range) {
+  if (!range) return null;
+  let overall = null;
+  for (const branch of String(range).split('||')) {
+    let floor = null;
+    const re = /(>=|<=|>|<|\^|~|=)?\s*v?(\d+(?:\.\d+){0,2})/g;
+    let m;
+    while ((m = re.exec(branch))) {
+      const op = m[1];
+      if (op === '<' || op === '<=') continue;
+      const [maj, min = 0] = m[2].split('.').map(Number);
+      if (!floor || maj > floor.maj || (maj === floor.maj && min > floor.min)) {
+        floor = { maj, min, text: m[2] };
+      }
+    }
+    if (!floor) return null;   // one unbounded alternative unbounds the range
+    if (!overall || floor.maj < overall.maj || (floor.maj === overall.maj && floor.min < overall.min)) {
+      overall = floor;
+    }
+  }
+  return overall ? overall.text : null;
+}
+
+/** Read deps (runtime vs dev split), the engines.node floor, and workspace markers from package.json. */
 function readPackageManifest(rootDir) {
-  const empty = { runtimeDeps: [], devDeps: [], nodeRequires: null };
+  const empty = { runtimeDeps: [], devDeps: [], nodeRequires: null, workspaces: false };
   try {
     const pkg = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf8'));
-    const engines = pkg.engines && pkg.engines.node;
     return {
       // Coverage resolution uses runtime deps only: recommending a
       // devDependency inside shipped code would itself introduce a bug.
       runtimeDeps: [...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.peerDependencies || {})],
       devDeps: Object.keys(pkg.devDependencies || {}),
-      // '>=16.14 <21' → '16.14': the declared floor of the AUDITED project,
-      // which is the right baseline for built-in availability — not the
-      // Node version that happens to be running this CLI.
-      nodeRequires: engines ? (String(engines).match(/(\d+(?:\.\d+)?)/) || [])[1] || null : null
+      nodeRequires: pkg.engines && pkg.engines.node ? enginesFloor(pkg.engines.node) : null,
+      workspaces: Boolean(pkg.workspaces)
     };
   } catch {
     return empty;
@@ -124,6 +150,10 @@ export function buildInventory(rootDir) {
   if (sawJs) languages.push('js');
   if (sawPy) languages.push('py');
 
+  const monorepo = manifest.workspaces ||
+    existsSync(join(rootDir, 'pnpm-workspace.yaml')) ||
+    existsSync(join(rootDir, 'lerna.json'));
+
   return {
     languages,
     node: { version: process.version, major: Number(process.version.slice(1).split('.')[0]) },
@@ -132,6 +162,7 @@ export function buildInventory(rootDir) {
     nodeRequires: manifest.nodeRequires,
     pyDeps,
     pythonRequires: py.pythonRequires,
+    monorepo,
     manifests
   };
 }

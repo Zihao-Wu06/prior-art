@@ -215,7 +215,9 @@ test('classifyLicense: empty/null/other -> unknown', () => {
   assert.equal(classifyLicense(''), 'unknown');
   assert.equal(classifyLicense(null), 'unknown');
   assert.equal(classifyLicense(undefined), 'unknown');
-  assert.equal(classifyLicense('WTFPL'), 'unknown');
+  assert.equal(classifyLicense('SEE LICENSE IN LICENSE'), 'unknown');
+  // WTFPL is genuinely permissive — the expression-aware classifier knows it.
+  assert.equal(classifyLicense('WTFPL'), 'permissive');
 });
 
 // ---------------------------------------------------------------------------

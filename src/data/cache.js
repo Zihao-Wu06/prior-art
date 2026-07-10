@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync, chmodSync } from 'node:fs';
 
 const CACHE_DIR = join(homedir(), '.cache', 'priorart', 'http');
 
@@ -21,6 +21,8 @@ export function cacheFile(method, url, body, keyExtra) {
 function readEntry(file) {
   try {
     if (!existsSync(file)) return null;
+    // Repair pre-0.3.4 entries written with default (world-readable) modes.
+    try { chmodSync(file, 0o600); } catch { /* best-effort */ }
     const entry = JSON.parse(readFileSync(file, 'utf8'));
     return entry && typeof entry.fetchedAt === 'number' ? entry : null;
   } catch {
@@ -30,8 +32,11 @@ function readEntry(file) {
 
 function writeEntry(file, entry) {
   try {
-    mkdirSync(CACHE_DIR, { recursive: true });
-    writeFileSync(file, JSON.stringify(entry));
+    // Cached responses can include auth-scoped results — owner-only, always.
+    mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
+    chmodSync(CACHE_DIR, 0o700);            // repair pre-existing looser dirs
+    writeFileSync(file, JSON.stringify(entry), { mode: 0o600 });
+    chmodSync(file, 0o600);
   } catch {
     // best-effort: caching must never break the caller's fetch
   }

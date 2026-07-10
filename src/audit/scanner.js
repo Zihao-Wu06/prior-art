@@ -42,6 +42,7 @@ const SNIPPET_MAX = 160;
 export function collectSourceFiles(rootDir, { includeTests = false, maxFiles = 4000, maxFileBytes = 524288 } = {}) {
   const files = [];
   let truncated = false;
+  let skippedLarge = 0;
 
   const walk = dir => {
     if (truncated) return;
@@ -75,7 +76,10 @@ export function collectSourceFiles(rootDir, { includeTests = false, maxFiles = 4
       if (!includeTests && TEST_PATH.test(rel)) continue;
 
       try {
-        if (statSync(full).size > maxFileBytes) continue;
+        if (statSync(full).size > maxFileBytes) {
+          skippedLarge += 1;   // counted, so coverage can report the gap
+          continue;
+        }
       } catch {
         continue;
       }
@@ -89,7 +93,7 @@ export function collectSourceFiles(rootDir, { includeTests = false, maxFiles = 4
   };
 
   walk(rootDir);
-  return { files, truncated };
+  return { files, truncated, skippedLarge };
 }
 
 /** Extract candidate function names defined on a line. */

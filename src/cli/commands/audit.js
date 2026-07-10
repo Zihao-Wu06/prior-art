@@ -39,16 +39,18 @@ export async function run(opts) {
 
   const patterns = inventory.languages.flatMap(l => patternsForLang(l));
   const patternById = new Map(patterns.map(p => [p.id, p]));
-  const { files, truncated } = collectSourceFiles(rootDir, { includeTests: !!opts.includeTests });
+  const { files, truncated, skippedLarge } = collectSourceFiles(rootDir, { includeTests: !!opts.includeTests });
 
   const findings = [];
   const perLang = {};
+  let unreadable = 0;
   for (const file of files) {
     perLang[file.lang] = (perLang[file.lang] || 0) + 1;
     let content;
     try {
       content = readFileSync(file.path, 'utf8');
     } catch {
+      unreadable += 1;
       continue;
     }
     const langPatterns = patternsForLang(file.lang);
@@ -76,6 +78,8 @@ export async function run(opts) {
     filesScanned: files.length,
     perLang,
     truncated,
+    skippedLarge,
+    unreadable,
     includeTests: !!opts.includeTests,
     patternsApplied: patterns.length
   };
@@ -93,7 +97,7 @@ export async function run(opts) {
         pythonRequires: inventory.pythonRequires,
         manifests: inventory.manifests
       },
-      coverage: { ignoredDirs: DEFAULT_IGNORE_DIRS, testsExcluded: !opts.includeTests, truncated }
+      coverage: { ignoredDirs: DEFAULT_IGNORE_DIRS, testsExcluded: !opts.includeTests, truncated, skippedLarge, unreadable, monorepo: inventory.monorepo }
     }, null, 2));
   } else {
     console.log(renderHuman({ rootDir, inventory, findings, high, info, filesWithFindings, coverage }));
@@ -104,11 +108,15 @@ export async function run(opts) {
   }
 }
 
-function coverageLine({ filesScanned, perLang, truncated, includeTests, patternsApplied }) {
+function coverageLine({ filesScanned, perLang, truncated, skippedLarge = 0, unreadable = 0, includeTests, patternsApplied }) {
   const langBits = Object.entries(perLang).map(([l, n]) => `${l} ${n}`).join(', ');
+  const gaps = [];
+  if (truncated) gaps.push('truncated at file cap');
+  if (skippedLarge) gaps.push(`${skippedLarge} oversized file${skippedLarge === 1 ? '' : 's'} skipped`);
+  if (unreadable) gaps.push(`${unreadable} unreadable`);
   return 'Coverage: scanned ' + filesScanned + ` file${filesScanned === 1 ? '' : 's'}` +
     (langBits ? ` (${langBits})` : '') +
-    (truncated ? ', truncated at file cap' : '') +
+    (gaps.length ? `; gaps: ${gaps.join(', ')}` : '') +
     `; ${includeTests ? 'tests included' : 'tests excluded (use --include-tests)'}` +
     `; ignored dirs: ${DEFAULT_IGNORE_DIRS.slice(0, 6).join(', ')}, …` +
     `; patterns applied: ${patternsApplied}.`;
@@ -118,6 +126,9 @@ function renderHuman({ rootDir, inventory, findings, high, info, filesWithFindin
   const lines = [];
   lines.push('Prior Art — wheel-reinvention audit');
   lines.push(`${rootDir}  ·  langs: ${inventory.languages.join(',')}  ·  Node ${inventory.node.version}  ·  npm deps: ${inventory.npmDeps.length}  ·  py deps: ${inventory.pyDeps.length}`);
+  if (inventory.monorepo) {
+    lines.push('⚠ monorepo detected: this inventory reflects the ROOT manifest only — sub-package deps and engine floors are not seen. Audit each package with --dir <pkg> for trustworthy coverage.');
+  }
   lines.push('');
 
   for (const f of findings) {

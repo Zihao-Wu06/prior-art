@@ -67,7 +67,7 @@ function renderHuman({ need, eco, repo, registry, github, notSearched }) {
     for (const r of repo.results) {
       lines.push(`  ${r.file}:${r.line}  ${r.snippet}`);
     }
-    lines.push('  ↑ related code already exists here — read it before building or adding anything.');
+    lines.push(`  ↑ related code already exists here — read it before building or adding anything.${repo.capped ? ' (stopped at 5 hits; more may exist)' : ''}`);
   }
   lines.push('');
 
@@ -100,7 +100,7 @@ function renderHuman({ need, eco, repo, registry, github, notSearched }) {
   lines.push('');
 
   const searched = [
-    repo.status === 'ok' ? `repo (${repo.filesScanned} js/py files — other languages not scanned locally)` : null,
+    repo.status === 'ok' ? `repo (${repo.filesScanned} js/py files — other languages not scanned locally${repo.capped ? '; hit cap reached' : ''})` : null,
     registry.status === 'ok' ? `${registry.registry} registry (top ${registry.results.length})` : null,
     github.status === 'ok' ? `GitHub (top ${github.results.length}${github.totalCount ? ` of ${github.totalCount}` : ''})` : null
   ].filter(Boolean);

@@ -119,7 +119,7 @@ Sensitivity is set via the `sensitivity` key in `.prior-art.json`; the default i
 
 Sequenced hardest-to-copy first, so the project stays worth using even if the easier parts get replicated elsewhere.
 
-- **v0.2 — audit. Shipped.** The wheel-reinvention detector: scans a repository for hand-rolled code that an installed dependency or the standard library already covers, and produces a report with file/line findings and estimated lines saved. This is the killer feature.
+- **v0.2 — audit. Shipped.** The wheel-reinvention detector: scans a repository for hand-rolled code that an installed dependency or the standard library already covers, and produces a report with file/line findings and estimated lines saved. (Its effect on agent behavior is a claim the v0.4 benchmark runner exists to prove — until then, treat findings as verified candidates, not statistics.)
 - **v0.3 — discovery.** Shipping in slices: `pa search` (repo + registry + GitHub channels) is live. Still to come: the installed-capability index, the first knowledge packs (JS and Python), and an MCP server exposing the pipeline to any agent.
 - **v0.4 — closing the loop.** A GitHub Action for PR-time dependency review and diff-level reinvention detection, the full benchmark runner, and the first public Wheel Reinvention Index.
 

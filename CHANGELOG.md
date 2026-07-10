@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.3.4 — 2026-07-10
+
+Third full review (independent agent): all confirmed correctness/security
+findings fixed.
+
+- **P0** GitHub search cache is partitioned per token fingerprint (token A's
+  auth-scoped results can never replay for token B or anonymous runs), and
+  the cache is owner-only (dir 0700, files 0600, pre-existing entries
+  repaired on read)
+- SPDX classification is expression-aware: `MIT OR GPL-3.0` is permissive
+  (consumer's choice), `LGPL AND GPL` is strong-copyleft (both apply),
+  `UNLICENSED` is proprietary (new class + warn flag) — string-contains
+  matching removed
+- `engines.node` floors parse real ranges: the floor of
+  `>=22 <23 || >=20 <21` is 20, not 22
+- ledger: corrupt files are backed up (`ledger.json.corrupt-<ts>`) before a
+  fresh start — never silently wiped; per-process temp names remove the
+  shared-tmp rename race; ADR numbering takes the next free slot instead of
+  overwriting on collision; CJK ADR titles slug correctly
+- `pa report --require-complete`: exit 3 when any signal source was
+  unreachable; the Evidence line itself now carries skipped-source notes
+  (it travels into ADRs alone); project license resolves from the project
+  root, npm-only for now
+- malformed `.prior-art.json` keeps anchoring the project root (no more
+  split ledgers), and config warnings/errors print to stderr instead of
+  silently degrading; `alwaysBuild`/`alwaysReuse`/`priorities` are now
+  injected into the session context so the model actually sees them
+- audit: monorepo roots print an explicit root-manifest-only warning
+  (workspaces/pnpm-workspace/lerna detected); coverage line reports
+  oversized/unreadable file gaps; CI workflow now runs `audit --ci`
+- search: CJK queries tokenize (repo channel no longer blind to 中文);
+  repo-channel hit cap is disclosed; strict-gate path matching works on
+  Windows separators
+- skills: the trust-boundary guardrail no longer contradicts the red-flags
+  table (adopt audited primitives, own the responsibility); the audit skill
+  no longer writes the ledger as a side effect of read-only review;
+  EventEmitter fpNote fact-checked (listeners run in registration order)
+- npm pack now includes the Chinese README and CHANGELOG
+
 ## 0.3.3 — 2026-07-10
 
 All confirmed findings from the second full review (independent agent, cold

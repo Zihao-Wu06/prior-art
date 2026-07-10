@@ -54,7 +54,9 @@ export function loadConfig(startDir = process.cwd()) {
     }
     return merged;
   } catch (err) {
-    return { ...DEFAULTS, _path: null, _error: err.message };
+    // Keep the discovered path: a malformed config still anchors the project
+    // root, so ledger/ADR writes from a subdir don't split into a second copy.
+    return { ...DEFAULTS, _path: path, _error: err.message };
   }
 }
 

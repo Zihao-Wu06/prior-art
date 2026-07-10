@@ -18,4 +18,4 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: npm test
       - run: node src/cli/index.js --help
-      - run: node src/cli/index.js audit --dir .
+      - run: node src/cli/index.js audit --dir . --ci

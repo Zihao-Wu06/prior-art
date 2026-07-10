@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { findProjectRoot } from '../../core/config.js';
 import {
   SYSTEMS,
   fetchPackage,
@@ -94,17 +95,26 @@ export async function run(name, opts) {
     }
   }
 
+  // Project license: only meaningful for npm projects today (Cargo.toml /
+  // pyproject license parsing is future work); resolved from the project
+  // root so subdirectory runs see the same manifest.
   let projectLicense = null;
-  try {
-    const raw = readFileSync(join(process.cwd(), 'package.json'), 'utf8');
-    const parsed = JSON.parse(raw);
-    projectLicense = parsed.license || null;
-  } catch {
-    projectLicense = null;
+  if (system === 'npm') {
+    try {
+      const raw = readFileSync(join(findProjectRoot(process.cwd()), 'package.json'), 'utf8');
+      projectLicense = JSON.parse(raw).license || null;
+    } catch {
+      projectLicense = null;
+    }
   }
 
   const flags = deriveFlags(signals, projectLicense);
-  const evidence = buildEvidenceLine(name, system, signals, flags);
+  let evidence = buildEvidenceLine(name, system, signals, flags);
+  if (skipped.length) {
+    // The Evidence line travels alone into ADRs — it must carry its own
+    // coverage statement rather than rely on a neighboring hint.
+    evidence += ` [skipped sources: ${skipped.join(', ')} — missing signals are unknown, not clean]`;
+  }
 
   if (opts.json) {
     console.log(JSON.stringify({ name, system, signals, flags, evidence, skippedSources: skipped }, null, 2));
@@ -117,6 +127,13 @@ export async function run(name, opts) {
 
   if (flags.some(f => f.level === 'high')) {
     process.exitCode = 1;
+  }
+  // Gate mode: incomplete signal coverage is its own failure class (exit 3),
+  // distinct from "HIGH finding" (exit 1) — a gate must not pass on absence
+  // of evidence.
+  if (skipped.length && opts.requireComplete) {
+    console.error(`error: incomplete signal coverage (skipped: ${skipped.join(', ')}) — failing due to --require-complete`);
+    process.exitCode = 3;
   }
 }
 

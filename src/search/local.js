@@ -13,12 +13,12 @@ const STOPWORDS = new Set([
 const DEF_LINE = /(^|\s)(function\s+\w|const\s+\w+\s*=\s*(async\s*)?(\(|function|[A-Za-z_$][\w$]*\s*=>)|def\s+\w|class\s+\w)/;
 const MAX_HITS = 5;
 
-/** Tokenize a natural-language need into search tokens. */
+/** Tokenize a natural-language need into search tokens (ASCII words + CJK runs). */
 export function tokenizeNeed(need) {
-  return [...new Set(
-    String(need).toLowerCase().split(/[^a-z0-9]+/)
-      .filter(t => t.length > 2 && !STOPWORDS.has(t))
-  )];
+  const s = String(need);
+  const ascii = s.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 2 && !STOPWORDS.has(t));
+  const cjk = s.match(/[一-鿿]{2,}/g) || [];
+  return [...new Set([...ascii, ...cjk])];
 }
 
 /**
@@ -55,5 +55,5 @@ export function searchRepo(rootDir, need) {
       }
     }
   }
-  return { status: 'ok', filesScanned: files.length, results };
+  return { status: 'ok', filesScanned: files.length, results, capped: results.length >= MAX_HITS };
 }

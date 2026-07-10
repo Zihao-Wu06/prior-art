@@ -52,11 +52,12 @@ async function runNew(dir, positionals, opts) {
   const next = existing.length ? Math.max(...existing) + 1 : 1;
   const nnnn = String(next).padStart(4, '0');
 
+  // Unicode-aware: a Chinese title must not slug to the empty string.
   const slug = title
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
+    .slice(0, 60) || 'untitled';
 
   // Prefer the scaffolded template (users may customize it); fall back to the
   // built-in so a missing file can never block recording a decision.
@@ -90,9 +91,18 @@ async function runNew(dir, positionals, opts) {
     content = content.replace(/^- Mode: .*$/m, `- Mode: ${opts.mode}`);
   }
 
-  const filename = `${nnnn}-${slug}.md`;
-  const outPath = join(dir, filename);
-  writeFileSync(outPath, content);
+  // Two concurrent `adr new` runs can compute the same number; take the next
+  // free one instead of overwriting a record.
+  let n = next;
+  let outPath = join(dir, `${String(n).padStart(4, '0')}-${slug}.md`);
+  while (existsSync(outPath) && n < next + 1000) {
+    n += 1;
+    outPath = join(dir, `${String(n).padStart(4, '0')}-${slug}.md`);
+  }
+  if (n !== next) {
+    content = content.replace(`${nnnn}. ${title}`, `${String(n).padStart(4, '0')}. ${title}`);
+  }
+  writeFileSync(outPath, content, { flag: 'wx' });
   console.log(outPath);
 }
 

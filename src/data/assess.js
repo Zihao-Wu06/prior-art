@@ -99,33 +99,49 @@ export function assessNpmExtras(packument, downloadsData, now = Date.now()) {
   };
 }
 
-/**
- * Classify an SPDX-ish license expression into a coarse reuse-risk bucket.
- * @param {string|null|undefined} expr
- * @returns {'permissive'|'weak-copyleft'|'strong-copyleft'|'unknown'}
- */
-export function classifyLicense(expr) {
-  if (!expr || typeof expr !== 'string') return 'unknown';
-  const norm = expr.toUpperCase();
+// Restrictiveness order for combining SPDX operands. 'unknown' ranks last so
+// it poisons AND (conservative) while OR can still pick a known side.
+const LICENSE_RANK = { permissive: 0, 'weak-copyleft': 1, 'strong-copyleft': 2, proprietary: 3, unknown: 4 };
 
-  if (norm.includes('AGPL')) return 'strong-copyleft';
-  if (norm.includes('GPL') && !norm.includes('LGPL')) return 'strong-copyleft';
-  if (norm.includes('LGPL') || norm.includes('MPL') || norm.includes('EPL') || norm.includes('CDDL')) return 'weak-copyleft';
+/** Classify one SPDX id (no operators). */
+function classifyLicenseAtom(raw) {
+  const t = String(raw).trim().toUpperCase().replace(/[()]/g, '').replace(/\+$/, '');
+  if (!t) return 'unknown';
+  // npm's marker for "no license granted" — the opposite of The Unlicense.
+  if (t === 'UNLICENSED') return 'proprietary';
+  if (t.startsWith('AGPL')) return 'strong-copyleft';
+  if (t.startsWith('LGPL')) return 'weak-copyleft';
+  if (t.startsWith('GPL')) return 'strong-copyleft';
+  if (t.startsWith('MPL') || t.startsWith('EPL') || t.startsWith('CDDL') || t.startsWith('OSL')) return 'weak-copyleft';
   if (
-    norm.includes('MIT') ||
-    norm.includes('ISC') ||
-    norm.includes('BSD') ||
-    norm.includes('APACHE') ||
-    norm.includes('0BSD') ||
-    norm.includes('UNLICENSE') ||
-    norm.includes('CC0') ||
-    norm.includes('ZLIB') ||
-    norm.includes('PSF')
+    t === 'MIT' || t === 'MIT-0' || t === 'ISC' || t.startsWith('BSD') ||
+    t.startsWith('APACHE') || t === '0BSD' || t === 'UNLICENSE' ||
+    t.startsWith('CC0') || t === 'ZLIB' || t.startsWith('PSF') || t === 'WTFPL' || t.startsWith('BLUEOAK')
   ) {
     return 'permissive';
   }
-
   return 'unknown';
+}
+
+/**
+ * Classify an SPDX license expression into a coarse reuse-risk bucket.
+ * Expression-aware: `A OR B` lets the consumer choose (least restrictive
+ * side governs); `A AND B` imposes both (most restrictive side governs).
+ * String-contains matching is deliberately avoided — it misread
+ * 'MIT OR GPL-3.0' as copyleft and 'UNLICENSED' as permissive.
+ * @param {string|null|undefined} expr
+ * @returns {'permissive'|'weak-copyleft'|'strong-copyleft'|'proprietary'|'unknown'}
+ */
+export function classifyLicense(expr) {
+  if (!expr || typeof expr !== 'string') return 'unknown';
+  // SPDX binds AND tighter than OR; WITH stays inside its atom.
+  const orParts = expr.split(/\s+OR\s+/i);
+  const orClasses = orParts.map(part => {
+    const andClasses = part.split(/\s+AND\s+/i).map(classifyLicenseAtom);
+    if (andClasses.includes('unknown')) return 'unknown';
+    return andClasses.reduce((worst, c) => (LICENSE_RANK[c] > LICENSE_RANK[worst] ? c : worst), 'permissive');
+  });
+  return orClasses.reduce((best, c) => (LICENSE_RANK[c] < LICENSE_RANK[best] ? c : best), 'unknown');
 }
 
 /**
@@ -162,7 +178,10 @@ export function deriveFlags(signals, projectLicense = null) {
   if (s.scorecard !== null && s.scorecard < 4) {
     flags.push({ level: 'warn', code: 'low-scorecard', message: `OpenSSF Scorecard is ${s.scorecard} (below 4).` });
   }
-  if (classifyLicense(s.license) === 'strong-copyleft' && classifyLicense(projectLicense) === 'permissive') {
+  const depLicenseClass = classifyLicense(s.license);
+  if (depLicenseClass === 'proprietary') {
+    flags.push({ level: 'warn', code: 'proprietary-license', message: `${s.license} grants no license — using this package likely requires a separate agreement.` });
+  } else if (depLicenseClass === 'strong-copyleft' && classifyLicense(projectLicense) === 'permissive') {
     flags.push({ level: 'warn', code: 'license-conflict', message: `${s.license} is strong-copyleft; project license is permissive.` });
   }
   if (s.monthlyDownloads !== null && s.monthlyDownloads < 1000) {

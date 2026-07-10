@@ -46,10 +46,24 @@ async function main() {
     return;
   }
 
+  // Project policies are only real if the model actually sees them.
+  const policies = [];
+  if (Array.isArray(config.alwaysBuild) && config.alwaysBuild.length) {
+    policies.push(`alwaysBuild (never outsource): ${config.alwaysBuild.join('; ')}`);
+  }
+  if (Array.isArray(config.alwaysReuse) && config.alwaysReuse.length) {
+    policies.push(`alwaysReuse (never reimplement): ${config.alwaysReuse.join('; ')}`);
+  }
+  if (Array.isArray(config.priorities) && config.priorities.length) {
+    policies.push(`priorities: ${config.priorities.join('; ')}`);
+  }
+
   console.log(JSON.stringify({
     hookSpecificOutput: {
       hookEventName: 'SessionStart',
-      additionalContext: RULE
+      additionalContext: policies.length
+        ? `${RULE}\nProject policy (.prior-art.json): ${policies.join(' · ')}`
+        : RULE
     }
   }));
 }

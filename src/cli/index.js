@@ -37,6 +37,7 @@ Options:
   --suggest             Also suggest well-known libraries that are not installed.
   --ci                  Exit 1 when high-confidence findings exist.
   --limit <n>           Max results per search channel (default 8, max 20).
+  --require-complete    report: exit 3 if any signal source was unreachable.
   --version, -v             Print the installed version.
 `;
 
@@ -81,6 +82,11 @@ export function parseArgv(argv) {
       i += 1;
       continue;
     }
+    if (arg === '--require-complete') {
+      opts.requireComplete = true;
+      i += 1;
+      continue;
+    }
     if (arg === '--') {
       // end-of-options: everything after is literal positionals
       positionals.push(...argv.slice(i + 1));
@@ -122,6 +128,14 @@ export async function main(argv) {
     console.log(USAGE);
     return;
   }
+
+  // Config problems must be visible, not a silent downgrade of the gate.
+  try {
+    const { loadConfig } = await import('../core/config.js');
+    const cfg = loadConfig(process.cwd());
+    if (cfg._error) console.error(`config warning: .prior-art.json is malformed (${cfg._error}) — defaults in effect, root still anchored there`);
+    else if (cfg._warning) console.error(`config warning: ${cfg._warning}`);
+  } catch { /* never block a command over config diagnostics */ }
 
   switch (command) {
     case 'init': {

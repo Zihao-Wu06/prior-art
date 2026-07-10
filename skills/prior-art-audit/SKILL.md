@@ -38,10 +38,12 @@ Only when the user asked for fixes. For each confirmed finding, propose the **mi
 
 ## Ledger discipline
 
-Record outcomes as you go, so the project's `pa stats` reflects real work:
+The ledger is a write — never a side effect of a read-only review. Offer to
+record outcomes (or record them when the user asked you to fix/track), so the
+project's `pa stats` reflects real, accepted work:
 
 ```
-# on a confirmed finding (whether or not you fix it):
+# once the user accepts a finding as real:
 pa stats record wheel-found 1 "<file>:<line> <what>"
 
 # after a fix lands with tests green:

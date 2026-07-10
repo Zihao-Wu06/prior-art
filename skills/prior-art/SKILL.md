@@ -115,7 +115,7 @@ These are the things a model tells itself right before it reinvents a wheel. Nam
 
 ## Guardrails
 
-- Never outsource **core differentiation**, **trust-boundary or security logic**, or **code small and clear enough to beat the cost of a dependency**.
+- Never outsource **core differentiation** or **code small and clear enough to beat the cost of a dependency**. For security: never hand-roll the primitives (crypto, auth protocols, parsers — adopt audited implementations, per the red-flags table above), and never outsource the **responsibility** — the trust-boundary decisions, configuration, and integration stay yours.
 - Never reimplement anything matching `alwaysReuse`; never outsource anything matching `alwaysBuild`; weight tradeoffs by the project's `priorities`. (All three lists live in `.prior-art.json`.)
 
 ## Verify it paid off

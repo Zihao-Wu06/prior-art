@@ -97,7 +97,9 @@ test('loadConfig reports malformed JSON via _error and never throws', () => {
     let cfg;
     assert.doesNotThrow(() => { cfg = loadConfig(dir); });
     assert.equal(cfg.sensitivity, DEFAULTS.sensitivity);
-    assert.equal(cfg._path, null);
+    // The discovered path survives a parse failure so the project root stays
+    // anchored (third review: corrupt config must not split the ledger).
+    assert.equal(cfg._path, configPath);
     assert.equal(typeof cfg._error, 'string');
     assert.ok(cfg._error.length > 0);
   } finally {

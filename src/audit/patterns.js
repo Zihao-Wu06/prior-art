@@ -926,7 +926,7 @@ export const PATTERNS = [
         note: 'synchronous, string/symbol event names; the browser-native EventTarget is the DOM-style alternative'
       }
     },
-    fpNote: 'EventEmitter is synchronous and unordered across listeners; a wheel providing wildcard events, async emission, or typed events (mitt/nanoevents territory) offers something node:events does not — do not claim a straight swap'
+    fpNote: 'EventEmitter calls listeners synchronously in registration order; a wheel providing wildcard events, async emission, or typed events (mitt/nanoevents territory) offers something node:events does not — do not claim a straight swap'
   }
 ];
 

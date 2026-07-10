@@ -5,6 +5,7 @@
 // A rate-limited or failed call degrades to a skipped channel with a
 // reason — never to a crash, and never to a silent "nothing exists".
 
+import { createHash } from 'node:crypto';
 import { cachedFetchJson } from '../data/cache.js';
 
 const SEARCH_TTL_MS = 3600000; // search results age fast; cache 1h, not 24h
@@ -48,13 +49,14 @@ export async function searchGitHubRepos(need, { limit = 8, fresh = false } = {})
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
   try {
-    // Partition the cache by auth mode: token-scoped results must never be
-    // replayed for an unauthenticated run (or vice versa).
+    // Partition the cache per token (irreversible fingerprint, never the
+    // secret): token A's auth-scoped results must never replay for token B
+    // on the same machine, nor for an unauthenticated run.
     const res = await cachedFetchJson(buildGitHubSearchUrl(need, limit), {
       ttlMs: SEARCH_TTL_MS,
       fresh,
       headers,
-      cacheKeyExtra: token ? 'gh-auth' : 'gh-anon'
+      cacheKeyExtra: token ? `gh-auth:${createHash('sha256').update(token).digest('hex').slice(0, 16)}` : 'gh-anon'
     });
     if (res.status === 404 || !res.data) {
       return { status: 'skipped', reason: 'GitHub search returned no payload', results: [] };

@@ -50,7 +50,11 @@ function runRecord(cwd, args) {
 }
 
 function printSummary(cwd) {
-  const { count, totals, first, last } = summarize(cwd);
+  const { count, totals, first, last, corrupt } = summarize(cwd);
+
+  if (corrupt) {
+    console.error('warning: .prior-art/ledger.json is corrupt — it will be backed up as ledger.json.corrupt-<ts> on the next record; nothing has been deleted.');
+  }
 
   if (count === 0) {
     console.log(

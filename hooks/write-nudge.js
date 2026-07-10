@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const SOURCE_EXT = /\.(m?[jt]sx?|py|go|rs|java|rb|cs|php)$/;
-const SOURCE_DIR = /(^|\/)(src|lib|app|packages|pkg|server|client)\//;
+const SOURCE_DIR = /(^|[\\/])(src|lib|app|packages|pkg|server|client)[\\/]/;
 const MIN_CONTENT_LENGTH = 1500;
 
 const NUDGE =

@@ -11,15 +11,16 @@ function ledgerPath(projectDir) {
   return join(projectDir, '.prior-art', 'ledger.json');
 }
 
-/** Read the ledger file, tolerating a missing or malformed file. */
+/** Read the ledger file, distinguishing missing from corrupt. */
 function readLedger(projectDir) {
   const file = ledgerPath(projectDir);
-  if (!existsSync(file)) return { events: [] };
+  if (!existsSync(file)) return { events: [], corrupt: false };
   try {
     const parsed = JSON.parse(readFileSync(file, 'utf8'));
-    return parsed && Array.isArray(parsed.events) ? parsed : { events: [] };
+    if (parsed && Array.isArray(parsed.events)) return { events: parsed.events, corrupt: false };
+    return { events: [], corrupt: true };
   } catch {
-    return { events: [] };
+    return { events: [], corrupt: true };
   }
 }
 
@@ -34,15 +35,28 @@ export function recordEvent(projectDir, { type, amount = 1, note = '' }) {
   if (!Number.isFinite(amount)) throw new Error(`amount must be a finite number, got: ${amount}`);
 
   mkdirSync(join(projectDir, '.prior-art'), { recursive: true });
-  const ledger = readLedger(projectDir);
-  const event = { ts: new Date().toISOString(), type, amount, note };
-  ledger.events.push(event);
-  // Atomic replace: a reader can never observe a torn/partial ledger, which
-  // readLedger would otherwise treat as empty and silently wipe history.
   const file = ledgerPath(projectDir);
-  writeFileSync(`${file}.tmp`, JSON.stringify(ledger, null, 2));
-  renameSync(`${file}.tmp`, file);
-  return event;
+  const { events, corrupt } = readLedger(projectDir);
+  // A corrupt ledger is never silently wiped: back it up first, then start
+  // fresh, and tell the caller where the history went.
+  let recoveredFrom = null;
+  if (corrupt) {
+    recoveredFrom = `${file}.corrupt-${Date.now()}`;
+    try {
+      renameSync(file, recoveredFrom);
+    } catch {
+      recoveredFrom = null;
+    }
+  }
+  const event = { ts: new Date().toISOString(), type, amount, note };
+  events.push(event);
+  // Atomic replace via a per-process temp name — a shared '.tmp' races under
+  // concurrent writers (observed ENOENT on rename). Concurrent read-modify-
+  // write remains last-writer-wins by design for this low-stakes tally.
+  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(tmp, JSON.stringify({ events }, null, 2));
+  renameSync(tmp, file);
+  return recoveredFrom ? { ...event, _recoveredFrom: recoveredFrom } : event;
 }
 
 /**
@@ -51,8 +65,8 @@ export function recordEvent(projectDir, { type, amount = 1, note = '' }) {
  * @returns {{count: number, totals: Record<string, number>, first: string|null, last: string|null}}
  */
 export function summarize(projectDir) {
-  const { events } = readLedger(projectDir);
-  if (!events.length) return { count: 0, totals: {}, first: null, last: null };
+  const { events, corrupt } = readLedger(projectDir);
+  if (!events.length) return { count: 0, totals: {}, first: null, last: null, corrupt };
 
   const totals = {};
   for (const e of events) {
@@ -63,6 +77,7 @@ export function summarize(projectDir) {
     count: events.length,
     totals,
     first: events[0].ts,
-    last: events[events.length - 1].ts
+    last: events[events.length - 1].ts,
+    corrupt
   };
 }
