@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.1 — 2026-07-10
+
+Fixes from a second independent adversarial review of the v0.4 code.
+
+- **Index honesty (P0):** a benchmark run whose agent errored (e.g. `claude`
+  not on PATH) is now excluded from the Wheel Reinvention Index instead of
+  being published as a real `100% reinvention` row; the count of excluded
+  errored runs is disclosed. (`scripts/wheel-index.js` `resultHasErrors`.)
+- **Action dependency detection (P1):** new dependencies added deep inside an
+  existing manifest block — where the block opener is beyond the diff's
+  context window, the common real case — are now caught by reconciling added
+  lines against the real on-disk manifest (`src/action/manifest.js` +
+  `reconcileAddedDeps`), not only the diff's context. Version bumps are
+  excluded uniformly (a name also on a removed line is not a new dependency).
+- **isDocumented (P2):** whole-token, boundary-anchored matching — dependency
+  `ms` is no longer "documented" by the word `terms`, and the keyword `build`
+  no longer matches inside `rebuilds`, so an unjustified dep can't slip through
+  strict mode.
+- The loose benchmark grader now requires an actual decision cue before
+  crediting a rung, and requirements-file URL/VCS lines are no longer parsed
+  as named dependencies.
+
 ## 0.4.0 — 2026-07-10
 
 Closing the loop. Three deliverables, built in parallel and put through an

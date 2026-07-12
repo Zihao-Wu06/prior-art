@@ -58,13 +58,28 @@ function rungCorrect(entry, cond) {
 }
 
 /**
- * Score one benchmark result object into a row, or null if it has no cases.
+ * Did any case in a result error (agent throw / timeout / missing binary)?
+ * An errored run measured nothing — its zeros must never become a published
+ * score. benchmark.js records the signal in `raw[].baselineError/enabledError`.
+ * @param {any} result
+ * @returns {boolean}
+ */
+export function resultHasErrors(result) {
+  const raw = result && Array.isArray(result.raw) ? result.raw : null;
+  if (!raw) return false;
+  return raw.some(r => r && (r.baselineError || r.enabledError));
+}
+
+/**
+ * Score one benchmark result object into a row, or null if it has no cases or
+ * any case errored (an errored run is never scored — see resultHasErrors).
  * Tolerant of missing fields; never throws.
  * @param {any} result
  * @returns {IndexRow|null}
  */
 function scoreResult(result) {
   if (!result || typeof result !== 'object') return null;
+  if (resultHasErrors(result)) return null;
   const byCase = Array.isArray(result.byCase) ? result.byCase : null;
   if (!byCase || byCase.length === 0) return null;
 
@@ -97,14 +112,16 @@ function scoreResult(result) {
 export function aggregateIndex(resultObjects) {
   const input = Array.isArray(resultObjects) ? resultObjects : [];
   const rows = [];
+  let excludedErrored = 0;
   for (const result of input) {
+    if (resultHasErrors(result)) { excludedErrored += 1; continue; }
     const row = scoreResult(result);
     if (row) rows.push(row);
   }
   rows.sort((a, b) =>
     b.reinventionRate - a.reinventionRate || a.model.localeCompare(b.model)
   );
-  return { rows, generatedFrom: rows.length, empty: rows.length === 0 };
+  return { rows, generatedFrom: rows.length, excludedErrored, empty: rows.length === 0 };
 }
 
 /** Format a 0..1 fraction as a one-decimal percentage string, e.g. 0.6667 -> "66.7%". */
@@ -192,6 +209,14 @@ export function renderIndexMarkdown(agg, opts = {}) {
     lines.push(
       `Ranked by reinvention rate (worst first). Generated from ${agg.generatedFrom} ` +
         `benchmark result file(s).`
+    );
+  }
+  if (agg && agg.excludedErrored > 0) {
+    lines.push('');
+    lines.push(
+      `> ${agg.excludedErrored} result file(s) were excluded because their agent ` +
+        `errored (e.g. \`claude\` not on PATH, auth failure, or a timeout) — an ` +
+        `errored run measured nothing and is never scored here.`
     );
   }
   lines.push('');

@@ -35,8 +35,11 @@ export function extractDecisionNote(text) {
     if (parsed) return parsed;
   }
 
-  // Pass 2 — tolerant. A line that says `use <rung-id>` for a real rung is
-  // enough to credit the agent with picking a rung, even without the full note.
+  // Pass 2 — tolerant, but only for text that actually reads like a decision.
+  // Without this cue, a casual sentence ("we can use in-house tooling for
+  // logging") would be credited as a rung pick and understate a model's
+  // reinvention rate — so a decision cue must be present somewhere in the text.
+  if (!/\bdecision\b|\btradeoff\b|\brejected\b|\brevisit\b|\bmode:/i.test(str)) return null;
   for (const line of lines) {
     const rungMatch = line.match(/\buse\s+([a-z0-9-]+)/i);
     if (!rungMatch) continue;
