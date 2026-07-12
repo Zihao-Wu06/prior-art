@@ -59,9 +59,9 @@ Honest inventory — what's shipped vs. what's planned.
 |---|---|
 | v0.1 | `pa report <pkg>` (7 ecosystems) · `pa init` · `pa adr new` / `pa adr list` · `pa stats` (ledger) · Claude Code plugin (Gate skill + ADR skill + 3-layer hooks) |
 | v0.2 | `pa audit` — wheel-reinvention detector: finds hand-rolled code that installed deps or the stdlib already cover |
-| **v0.3** (today) | `pa search` — prior-art discovery across your repo, the package registry (npm/crates), and GitHub, with per-channel coverage honesty |
+| v0.3 | `pa search` — prior-art discovery across your repo, the package registry (npm/crates), and GitHub, with per-channel coverage honesty |
+| **v0.4** (today) | GitHub Action (PR-time dependency review + diff-scoped reinvention detection) · behavior benchmark runner + honesty gate · the [Wheel Reinvention Index](docs/wheel-reinvention-index.md) methodology |
 | v0.3 (rest) | installed-capability index, knowledge packs, MCP server |
-| v0.4 | GitHub Action, benchmark runner, public Wheel Reinvention Index |
 
 ## The reuse ladder
 
@@ -119,9 +119,9 @@ Sensitivity is set via the `sensitivity` key in `.prior-art.json`; the default i
 
 Sequenced hardest-to-copy first, so the project stays worth using even if the easier parts get replicated elsewhere.
 
-- **v0.2 — audit. Shipped.** The wheel-reinvention detector: scans a repository for hand-rolled code that an installed dependency or the standard library already covers, and produces a report with file/line findings and estimated lines saved. (Its effect on agent behavior is a claim the v0.4 benchmark runner exists to prove — until then, treat findings as verified candidates, not statistics.)
-- **v0.3 — discovery.** Shipping in slices: `pa search` (repo + registry + GitHub channels) is live. Still to come: the installed-capability index, the first knowledge packs (JS and Python), and an MCP server exposing the pipeline to any agent.
-- **v0.4 — closing the loop.** A GitHub Action for PR-time dependency review and diff-level reinvention detection, the full benchmark runner, and the first public Wheel Reinvention Index.
+- **v0.2 — audit. Shipped.** The wheel-reinvention detector: scans a repository for hand-rolled code that an installed dependency or the standard library already covers, and produces a report with file/line findings and estimated lines saved.
+- **v0.3 — discovery.** `pa search` (repo + registry + GitHub channels) is live. Still to come: the installed-capability index, the first knowledge packs (JS and Python), and an MCP server exposing the pipeline to any agent.
+- **v0.4 — closing the loop. Shipped.** A GitHub Action for PR-time dependency review and diff-scoped reinvention detection, a behavior benchmark runner that measures whether the gate changes an agent's decisions, and the Wheel Reinvention Index methodology. The Index ships **empty on purpose** — the repo asserts no measured numbers; you produce them by running the benchmark against real models.
 
 ## Search
 
@@ -137,6 +137,39 @@ pa search "markdown table parser" --eco cargo --limit 5
 3. **GitHub** — top repositories by stars, with last-push date, license, and archived flags. Unauthenticated GitHub allows 10 searches/min; set `GITHUB_TOKEN` to raise it.
 
 Every result block ends with a coverage line naming the channels searched and skipped — an empty channel means "no match found there", never "no solution exists". Vet candidates with `pa report <pkg>` and record the call with `pa adr new`.
+
+## GitHub Action: PR-time review
+
+Add `.github/workflows/prior-art.yml`:
+
+```yaml
+name: Prior Art
+on: pull_request
+jobs:
+  prior-art:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: Zihao-Wu06/prior-art@v0.4
+        with:
+          strict: 'false'   # 'true' fails the check on undocumented deps or high-confidence wheels
+```
+
+It posts a job summary that (1) lists new dependencies and whether each is backed by a decision note (PR body / commit proximity, or a `docs/decisions/*.md` reference), and (2) flags reinvented wheels **introduced by the diff** — findings outside the changed lines are excluded. In `strict` mode the check fails when a new dependency lacks a decision note or a high-confidence wheel is added.
+
+## Benchmark & the Wheel Reinvention Index
+
+Does the reuse-ladder gate actually change an agent's decisions? That's a measurable claim, and until it's measured this project won't assert it. The benchmark runs each [behavior case](benchmarks/behavior-cases.json) through an agent twice — baseline vs. gate-enabled — and grades whether it picked the right rung and mode.
+
+```
+npm run benchmark:gate          # honest regression: proves the *grader* discriminates (in `npm test`)
+npm run benchmark:dry           # offline smoke run against a FAKE agent — output is labelled SYNTHETIC, nothing written
+npm run benchmark -- --model <id>   # real run: baseline vs gate-enabled via `claude -p`, writes benchmarks/results/
+npm run index                   # (re)generate docs/wheel-reinvention-index.md from result files
+```
+
+The repo ships **no measured numbers**. The [Wheel Reinvention Index](docs/wheel-reinvention-index.md) is a methodology page that stays empty until you run the benchmark across models — a run that errored (e.g. `claude` not on PATH) is reported as an error, never as a zero-score result.
 
 ## Credits
 

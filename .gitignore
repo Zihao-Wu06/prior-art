@@ -1,4 +1,7 @@
 node_modules/
 .prior-art/ledger.json
+.prior-art/*.corrupt-*
+benchmarks/results/*
+!benchmarks/results/.gitkeep
 *.log
 .DS_Store

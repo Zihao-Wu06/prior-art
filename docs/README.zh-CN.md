@@ -70,9 +70,15 @@ pa audit --ci                         # 存在高置信度发现时以退出码 
 |---|---|
 | v0.1 | `pa report <pkg>`（覆盖 7 个生态）· `pa init` · `pa adr new` / `pa adr list` · `pa stats`（台账）· Claude Code 插件（Gate skill + ADR skill + 三层 hook） |
 | v0.2 | `pa audit` —— 重造轮子审计：找出已装依赖或标准库已经覆盖的手写代码 |
-| **v0.3**（现在） | `pa search` 先例检索——本仓库 + 注册表（npm/crates）+ GitHub 三通道，逐通道覆盖声明 |
+| v0.3 | `pa search` 先例检索——本仓库 + 注册表（npm/crates）+ GitHub 三通道，逐通道覆盖声明 |
+| **v0.4**（现在） | GitHub Action（PR 依赖审查 + diff 内重造检测）· 行为基准跑分器 + 诚实门禁 · [Wheel Reinvention Index](wheel-reinvention-index.md) 方法论 |
 | v0.3（剩余） | 已装能力索引、知识包、MCP server |
-| v0.4 | GitHub Action、基准测试跑分器、公开的 Wheel Reinvention Index |
+
+## GitHub Action 与基准
+
+**Action**：在 PR 上贴一份摘要——列出新增依赖是否有决策注记，并标出 diff 内新引入的重造轮子（只看改动的行）；`strict` 模式下无注记的新依赖或高危发现会让检查失败。
+
+**基准**：门控到底有没有改变 agent 的决策？这是可测量的，没测就不宣称。`npm run benchmark -- --model <id>` 对每个[行为用例](../benchmarks/behavior-cases.json)跑基线 vs 门控两遍并判分；`npm run benchmark:dry` 离线冒烟（输出标注 SYNTHETIC、不写文件）；`npm run benchmark:gate` 验证判分器本身有区分度（进 `npm test`）。**本仓库不含任何实测数字**，[Wheel Reinvention Index](wheel-reinvention-index.md) 在你跨模型实跑之前一直是空的方法论页。
 
 ## 灵敏度分级
 

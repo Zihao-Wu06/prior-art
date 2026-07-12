@@ -1,0 +1,49 @@
+name: 'Prior Art'
+description: 'Flag undocumented new dependencies and reinvented wheels in a PR diff.'
+branding:
+  icon: 'search'
+  color: 'purple'
+
+inputs:
+  strict:
+    description: 'Fail the check (exit 1) when a new dependency lacks a decision note or a high-confidence reinvented wheel is added in the diff.'
+    required: false
+    default: 'false'
+  base-ref:
+    description: 'Git ref to diff the pull request against.'
+    required: false
+    default: 'origin/${{ github.base_ref }}'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Ensure Node 20+
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Compute PR diff
+      shell: bash
+      run: |
+        set -uo pipefail
+        DIFF_FILE="$(mktemp)"
+        BASE='${{ inputs.base-ref }}'
+        # Fetch the base ref shallowly so the three-dot diff has a merge base.
+        if [ -n "${GITHUB_BASE_REF:-}" ]; then
+          git fetch --no-tags --depth=50 origin "${GITHUB_BASE_REF}" || true
+        fi
+        if git diff "${BASE}"...HEAD > "$DIFF_FILE" 2>/dev/null && [ -s "$DIFF_FILE" ]; then
+          :
+        else
+          # Fallbacks: last commit, then an empty diff (review degrades cleanly).
+          git diff HEAD~1...HEAD > "$DIFF_FILE" 2>/dev/null || : > "$DIFF_FILE"
+        fi
+        echo "PRIOR_ART_DIFF_FILE=$DIFF_FILE" >> "$GITHUB_ENV"
+
+    - name: Prior Art review
+      shell: bash
+      env:
+        DIFF_FILE: ${{ env.PRIOR_ART_DIFF_FILE }}
+        PR_BODY: ${{ github.event.pull_request.body }}
+        STRICT: ${{ inputs.strict }}
+      run: node "${{ github.action_path }}/src/action/cli.js"

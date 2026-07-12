@@ -1,6 +1,6 @@
 {
   "name": "priorart",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "description": "Search prior art before you build. An evidence engine that stops AI coding agents from reinventing the wheel.",
   "type": "module",
   "bin": {
@@ -11,7 +11,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test && node scripts/benchmark-gate.js",
+    "benchmark": "node scripts/benchmark.js",
+    "benchmark:dry": "node scripts/benchmark.js --dry",
+    "benchmark:gate": "node scripts/benchmark-gate.js",
+    "index": "node scripts/wheel-index.js",
+    "pr-review": "node src/action/cli.js"
   },
   "keywords": [
     "ai-agents",
@@ -32,12 +37,16 @@
   },
   "files": [
     "src",
+    "scripts",
     "skills",
     "hooks",
     "rules",
     "knowledge",
+    "action.yml",
+    "benchmarks/behavior-cases.json",
     "docs/decisions/0000-template.md",
     "docs/README.zh-CN.md",
+    "docs/wheel-reinvention-index.md",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

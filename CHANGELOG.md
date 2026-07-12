@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.4.0 — 2026-07-10
+
+Closing the loop. Three deliverables, built in parallel and put through an
+adversarial review pass before landing.
+
+### Added
+- **GitHub Action** (`action.yml`, composite) — PR-time review: lists new
+  dependencies and whether each is backed by a decision note, and flags
+  reinvented wheels **introduced by the diff** (findings outside the changed
+  lines are excluded). `strict` input fails the check on undocumented deps or
+  high-confidence wheels. Pure parsers/renderer in `src/action/`
+  (`diff.js`, `render.js`, `pr-review.js`) with an injectable audit;
+  `src/action/cli.js` does the IO (entrypoint-guarded).
+- **Behavior benchmark runner** (`scripts/benchmark.js`, `grade.js`,
+  `benchmark-gate.js`) — measures whether the reuse-ladder gate changes an
+  agent's rung/mode choice. `npm run benchmark:gate` (in `npm test`) proves
+  the grader discriminates; `npm run benchmark:dry` is an offline synthetic
+  smoke run; `npm run benchmark -- --model <id>` is the real run.
+- **Wheel Reinvention Index** (`scripts/wheel-index.js`,
+  `docs/wheel-reinvention-index.md`) — ranks models by how often the un-gated
+  baseline reinvents the wheel. Ships **empty**: no measured numbers until a
+  real run.
+
+### Honesty
+- The repo asserts no benchmark numbers. A run whose agent errored is reported
+  as an error, never as a zero-score measurement. The Index empty state prints
+  methodology only, never placeholder percentages.
+
+### Fixed (from the v0.4 adversarial review, pre-merge)
+- benchmark→index schema mismatch: the Index consumer read a shape the
+  runner never emits, which would have published every model as
+  `unknown | 0/0 | 100%` on the first real run. Consumer aligned to the
+  producer's flat `byCase[].baselineRungCorrect` / top-level `model`, with an
+  end-to-end producer→consumer regression test.
+- benchmark report now surfaces an agent-error count instead of silently
+  rendering an all-errored run as an all-zero result.
+- action `cli.js` entrypoint-guarded so importing it has no side effects.
+
 ## 0.3.4 — 2026-07-10
 
 Third full review (independent agent): all confirmed correctness/security
