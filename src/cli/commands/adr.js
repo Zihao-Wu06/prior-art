@@ -64,7 +64,9 @@ async function runNew(dir, positionals, opts) {
   const templatePath = join(dir, TEMPLATE_NAME);
   let content = existsSync(templatePath) ? readFileSync(templatePath, 'utf8') : ADR_TEMPLATE;
 
-  content = content.replace('NNNN. <title>', `${nnnn}. ${title}`);
+  // Replacer functions, never replacement strings: a title like 'Pay $& per
+  // seat' must land verbatim, not be expanded as a `$&` substitution pattern.
+  content = content.replace('NNNN. <title>', () => `${nnnn}. ${title}`);
 
   const today = new Date().toISOString().slice(0, 10);
   content = content.replace('<YYYY-MM-DD>', today);
@@ -100,7 +102,7 @@ async function runNew(dir, positionals, opts) {
     outPath = join(dir, `${String(n).padStart(4, '0')}-${slug}.md`);
   }
   if (n !== next) {
-    content = content.replace(`${nnnn}. ${title}`, `${String(n).padStart(4, '0')}. ${title}`);
+    content = content.replace(`${nnnn}. ${title}`, () => `${String(n).padStart(4, '0')}. ${title}`);
   }
   writeFileSync(outPath, content, { flag: 'wx' });
   console.log(outPath);

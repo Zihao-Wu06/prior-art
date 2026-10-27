@@ -12,13 +12,60 @@ function pyName(raw) {
   return String(raw).trim().replace(/\[.*?\]/g, '').split(/[<>=!~;@\s]/)[0].toLowerCase().replace(/_/g, '-');
 }
 
+/** A TOML line with quoted strings blanked out, so `]` inside `"pkg[extra]"` is not structure. */
+export function stripTomlStrings(line) {
+  return String(line).replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
+}
+
+/** pyproject.toml: PEP 621 `dependencies = [ … ]` arrays plus poetry dependency tables. */
+function parsePyprojectDeps(text, deps) {
+  let inArray = false;
+  let inPoetryDeps = false;
+  for (const line of text.split('\n')) {
+    const t = line.trim();
+    if (inArray) {
+      for (const q of t.matchAll(/["']([^"']+)["']/g)) deps.set(pyName(q[1]), null);
+      if (/\]/.test(stripTomlStrings(t))) inArray = false;
+      continue;
+    }
+    const table = t.match(/^\[([^\]]+)\]/);
+    if (table) {
+      inPoetryDeps = /(^|\.)dependencies$/.test(table[1].trim()) && /poetry/.test(table[1]);
+      continue;
+    }
+    if (/^dependencies\s*=\s*\[/.test(t)) {
+      const rest = t.slice(t.indexOf('[') + 1);
+      for (const q of rest.matchAll(/["']([^"']+)["']/g)) deps.set(pyName(q[1]), null);
+      inArray = !/\]/.test(stripTomlStrings(rest));
+      continue;
+    }
+    if (inPoetryDeps) {
+      const kv = t.match(/^([A-Za-z0-9._-]+)\s*=/);
+      if (kv && kv[1].toLowerCase() !== 'python') deps.set(kv[1].toLowerCase().replace(/_/g, '-'), null);
+    }
+  }
+  return deps;
+}
+
+/** requirements*.txt: one requirement per line; comments, options and URL installs skipped. */
+function parseRequirementsDeps(text, deps) {
+  for (const line of text.split('\n')) {
+    const t = line.replace(/\s+#.*$/, '').trim();
+    if (!t || t.startsWith('#') || t.startsWith('-') || /:\/\//.test(t) || /^(git|hg|svn|bzr)\+/.test(t)) continue;
+    const n = pyName(t);
+    if (n) deps.set(n, null);
+  }
+  return deps;
+}
+
 /**
  * Parse a manifest's real dependency names from its file content.
  * @param {string} content
  * @param {string} ecosystem - 'npm' | 'pypi' | 'cargo' | 'go'
+ * @param {string} [path] - manifest path; tells pyproject.toml from requirements*.txt
  * @returns {Map<string, string|null>} name -> version (null when unknown)
  */
-export function parseManifestDeps(content, ecosystem) {
+export function parseManifestDeps(content, ecosystem, path) {
   const deps = new Map();
   const text = String(content || '');
   try {
@@ -31,33 +78,11 @@ export function parseManifestDeps(content, ecosystem) {
       return deps;
     }
     if (ecosystem === 'pypi') {
-      // requirements-style lines and/or a pyproject `dependencies = [ … ]` array
-      // plus a `[tool.poetry.dependencies]` table — handle both, tolerantly.
-      const lines = text.split('\n');
-      let inArray = false;
-      let inPoetryDeps = false;
-      for (const line of lines) {
-        const t = line.trim();
-        const table = t.match(/^\[([^\]]+)\]/);
-        if (table) { inPoetryDeps = /(^|\.)dependencies$/.test(table[1].trim()) && /poetry/.test(table[1]); inArray = false; continue; }
-        if (/^dependencies\s*=\s*\[/.test(t)) { inArray = true; }
-        if (inArray) {
-          for (const q of t.matchAll(/["']([^"']+)["']/g)) deps.set(pyName(q[1]), null);
-          if (/\]/.test(t)) inArray = false;
-          continue;
-        }
-        if (inPoetryDeps) {
-          const kv = t.match(/^([A-Za-z0-9._-]+)\s*=/);
-          if (kv && kv[1].toLowerCase() !== 'python') deps.set(kv[1].toLowerCase().replace(/_/g, '-'), null);
-          continue;
-        }
-        // requirements.txt line
-        if (t && !t.startsWith('#') && !t.startsWith('[') && !t.startsWith('-') && !/:\/\//.test(t) && !/^(git|hg|svn|bzr)\+/.test(t) && !/=/.test(t.split(/[<>=!~;]/)[0])) {
-          const n = pyName(t);
-          if (n) deps.set(n, null);
-        }
-      }
-      return deps;
+      // pyproject.toml and requirements*.txt are different grammars: reading a
+      // TOML file as requirements turned every `key = value` line (description,
+      // readme, line-length, …) into a "dependency".
+      const isToml = path ? /\.toml$/i.test(path) : /^\s*\[[^\]]+\]\s*(#.*)?$/m.test(text);
+      return isToml ? parsePyprojectDeps(text, deps) : parseRequirementsDeps(text, deps);
     }
     if (ecosystem === 'cargo') {
       let inDeps = false;

@@ -131,7 +131,7 @@ export function reconcileAddedDeps(diff, rootDir) {
       } catch {
         continue;   // no working tree for this file — diff-only detection stands
       }
-      const realDeps = parseManifestDeps(content, ecosystem);
+      const realDeps = parseManifestDeps(content, ecosystem, path);
       if (!realDeps.size) continue;
       const added = extractAddedLines(diff, path);
       for (const [name, version] of realDeps) {
@@ -152,19 +152,30 @@ export function reconcileAddedDeps(diff, rootDir) {
   });
 }
 
-/** Default audit runner: shell out to the project's own `pa audit --json` and return its findings. */
+/**
+ * Default audit runner: shell out to the project's own `pa audit --json` and
+ * return its findings. Throws when the audit could not run or produced
+ * unusable output — run() turns that into a visible note (and, in strict
+ * mode, a failing check) instead of silently reporting "clean".
+ */
 async function defaultAudit({ rootDir }) {
-  try {
-    const res = spawnSync(process.execPath, [CLI_ENTRY, 'audit', '--dir', rootDir, '--json'], {
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024
-    });
-    if (res.error || typeof res.stdout !== 'string') return [];
-    const parsed = JSON.parse(res.stdout);
-    return Array.isArray(parsed.findings) ? parsed.findings : [];
-  } catch {
-    return [];   // a broken audit must never break the PR check
+  const res = spawnSync(process.execPath, [CLI_ENTRY, 'audit', '--dir', rootDir, '--json'], {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024
+  });
+  if (res.error) throw new Error(`could not start pa audit (${res.error.message})`);
+  if (res.status !== 0) {
+    const why = String(res.stderr || '').trim().split('\n').pop() || `exit code ${res.status}`;
+    throw new Error(`pa audit exited ${res.status}: ${why.slice(0, 200)}`);
   }
+  let parsed;
+  try {
+    parsed = JSON.parse(res.stdout);
+  } catch {
+    throw new Error('pa audit produced no valid JSON');
+  }
+  if (!parsed || !Array.isArray(parsed.findings)) throw new Error('pa audit JSON has no findings array');
+  return parsed.findings;
 }
 
 /**
@@ -198,11 +209,15 @@ export async function run({ diffText, decisionText, rootDir, strict, audit } = {
   // 3. Run the audit (injected or default) and keep only findings that live in
   //    a changed file AND whose captured line was actually added in this diff.
   let rawFindings = [];
+  let auditFailed = false;
   try {
     rawFindings = await auditFn({ rootDir: root, changedFiles });
-    if (!Array.isArray(rawFindings)) rawFindings = [];
+    if (!Array.isArray(rawFindings)) throw new Error('audit returned no findings array');
   } catch (err) {
-    notes.push(`Audit step failed: ${err && err.message ? err.message : 'unknown error'} — continuing without wheel findings.`);
+    // A failed audit is missing evidence, not a clean result: say so, and let
+    // strict mode fail on it rather than pass on absence of evidence.
+    auditFailed = true;
+    notes.push(`Audit step failed: ${err && err.message ? err.message : 'unknown error'} — wheel findings are unknown, not clean.`);
     rawFindings = [];
   }
 
@@ -215,10 +230,10 @@ export async function run({ diffText, decisionText, rootDir, strict, audit } = {
   const highFindings = findings.filter(f => f.level === 'high');
 
   // 4. Render + decide.
-  const summary = renderSummary({ addedDeps, undocumentedDeps, auditFindings: findings, strict: isStrict });
+  const summary = renderSummary({ addedDeps, undocumentedDeps, auditFindings: findings, strict: isStrict, auditFailed });
   const body = notes.length ? summary + '\n' + notes.map(n => `> ${n}`).join('\n') + '\n' : summary;
   console.log(body);
 
-  const exitCode = decideExit({ undocumentedDeps, highFindings, strict: isStrict });
-  return { exitCode, summary: body, addedDeps, undocumentedDeps, findings, notes };
+  const exitCode = decideExit({ undocumentedDeps, highFindings, strict: isStrict, auditFailed });
+  return { exitCode, summary: body, addedDeps, undocumentedDeps, findings, notes, auditFailed };
 }

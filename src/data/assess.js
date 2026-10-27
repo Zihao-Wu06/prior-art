@@ -123,25 +123,72 @@ function classifyLicenseAtom(raw) {
   return 'unknown';
 }
 
+/** Less restrictive of two classes (OR: the consumer picks a side). */
+function orClass(a, b) {
+  return LICENSE_RANK[a] <= LICENSE_RANK[b] ? a : b;
+}
+
+/** More restrictive of two classes (AND: both apply; 'unknown' poisons). */
+function andClass(a, b) {
+  return LICENSE_RANK[a] >= LICENSE_RANK[b] ? a : b;
+}
+
 /**
  * Classify an SPDX license expression into a coarse reuse-risk bucket.
  * Expression-aware: `A OR B` lets the consumer choose (least restrictive
  * side governs); `A AND B` imposes both (most restrictive side governs).
- * String-contains matching is deliberately avoided — it misread
- * 'MIT OR GPL-3.0' as copyleft and 'UNLICENSED' as permissive.
+ * Parentheses are honored — splitting on OR first misread
+ * 'GPL-3.0 AND (MIT OR BSD-3-Clause)' as permissive. String-contains matching
+ * is deliberately avoided — it misread 'MIT OR GPL-3.0' as copyleft and
+ * 'UNLICENSED' as permissive. A malformed expression is 'unknown'.
  * @param {string|null|undefined} expr
  * @returns {'permissive'|'weak-copyleft'|'strong-copyleft'|'proprietary'|'unknown'}
  */
 export function classifyLicense(expr) {
   if (!expr || typeof expr !== 'string') return 'unknown';
-  // SPDX binds AND tighter than OR; WITH stays inside its atom.
-  const orParts = expr.split(/\s+OR\s+/i);
-  const orClasses = orParts.map(part => {
-    const andClasses = part.split(/\s+AND\s+/i).map(classifyLicenseAtom);
-    if (andClasses.includes('unknown')) return 'unknown';
-    return andClasses.reduce((worst, c) => (LICENSE_RANK[c] > LICENSE_RANK[worst] ? c : worst), 'permissive');
-  });
-  return orClasses.reduce((best, c) => (LICENSE_RANK[c] < LICENSE_RANK[best] ? c : best), 'unknown');
+  const tokens = expr.match(/\(|\)|[^\s()]+/g) || [];
+  const isOp = (t, op) => typeof t === 'string' && t.toUpperCase() === op;
+  let pos = 0;
+
+  // Grammar (SPDX precedence: WITH > AND > OR):
+  //   or   := and ('OR' and)*
+  //   and  := term ('AND' term)*
+  //   term := '(' or ')' | id ('WITH' exception)?
+  const parseTerm = () => {
+    const t = tokens[pos];
+    if (t === undefined || t === ')' || isOp(t, 'AND') || isOp(t, 'OR') || isOp(t, 'WITH')) throw new Error('bad term');
+    pos += 1;
+    if (t === '(') {
+      const inner = parseOr();
+      if (tokens[pos] !== ')') throw new Error('unbalanced');
+      pos += 1;
+      return inner;
+    }
+    const cls = classifyLicenseAtom(t);
+    if (isOp(tokens[pos], 'WITH')) {
+      // An exception never changes the bucket of the license it modifies.
+      if (tokens[pos + 1] === undefined || tokens[pos + 1] === '(' || tokens[pos + 1] === ')') throw new Error('bad exception');
+      pos += 2;
+    }
+    return cls;
+  };
+  const parseAnd = () => {
+    let cls = parseTerm();
+    while (isOp(tokens[pos], 'AND')) { pos += 1; cls = andClass(cls, parseTerm()); }
+    return cls;
+  };
+  const parseOr = () => {
+    let cls = parseAnd();
+    while (isOp(tokens[pos], 'OR')) { pos += 1; cls = orClass(cls, parseAnd()); }
+    return cls;
+  };
+
+  try {
+    const cls = parseOr();
+    return pos === tokens.length ? cls : 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 /**

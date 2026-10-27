@@ -6,7 +6,7 @@ branding:
 
 inputs:
   strict:
-    description: 'Fail the check (exit 1) when a new dependency lacks a decision note or a high-confidence reinvented wheel is added in the diff.'
+    description: 'Fail the check (exit 1) when a new dependency lacks a decision note or a high-confidence reinvented wheel is added in the diff, or when the wheel audit itself fails to run.'
     required: false
     default: 'false'
   base-ref:

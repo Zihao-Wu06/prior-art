@@ -19,6 +19,15 @@ export async function run(opts) {
   }
 
   const inventory = buildInventory(rootDir);
+  const { files, truncated, skippedLarge } = collectSourceFiles(rootDir, { includeTests: !!opts.includeTests });
+
+  // The inventory only glances at the first ~200 entries to guess languages;
+  // the full file walk is the ground truth. Fold in every language we are
+  // about to scan, so each file's patterns are known (a py file past the
+  // glance used to crash resolution with an undefined pattern).
+  for (const lang of ['js', 'py']) {
+    if (!inventory.languages.includes(lang) && files.some(f => f.lang === lang)) inventory.languages.push(lang);
+  }
 
   if (!inventory.languages.length) {
     if (opts.json) {
@@ -39,7 +48,6 @@ export async function run(opts) {
 
   const patterns = inventory.languages.flatMap(l => patternsForLang(l));
   const patternById = new Map(patterns.map(p => [p.id, p]));
-  const { files, truncated, skippedLarge } = collectSourceFiles(rootDir, { includeTests: !!opts.includeTests });
 
   const findings = [];
   const perLang = {};
@@ -55,9 +63,11 @@ export async function run(opts) {
     }
     const langPatterns = patternsForLang(file.lang);
     for (const match of scanFile(content, file.lang, langPatterns)) {
+      const pattern = patternById.get(match.patternId);
+      if (!pattern) continue;   // defensive: never crash the whole audit on one match
       const finding = resolveFinding(
         { ...match, file: file.rel },
-        patternById.get(match.patternId),
+        pattern,
         inventory,
         { suggest: !!opts.suggest }
       );

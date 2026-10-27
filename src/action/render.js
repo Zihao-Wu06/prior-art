@@ -11,10 +11,10 @@ function cell(text) {
 
 /**
  * Render the PR review as a Markdown block.
- * @param {{addedDeps?: AddedDep[], undocumentedDeps?: AddedDep[], auditFindings?: Array<object>, strict?: boolean}} input
+ * @param {{addedDeps?: AddedDep[], undocumentedDeps?: AddedDep[], auditFindings?: Array<object>, strict?: boolean, auditFailed?: boolean}} input
  * @returns {string}
  */
-export function renderSummary({ addedDeps = [], undocumentedDeps = [], auditFindings = [], strict = false } = {}) {
+export function renderSummary({ addedDeps = [], undocumentedDeps = [], auditFindings = [], strict = false, auditFailed = false } = {}) {
   const undoc = new Set(undocumentedDeps.map(d => `${d.ecosystem} ${d.name} ${d.manifest}`));
   const highCount = auditFindings.filter(f => f && f.level === 'high').length;
   const lines = [];
@@ -48,7 +48,10 @@ export function renderSummary({ addedDeps = [], undocumentedDeps = [], auditFind
   // ── Reinvented wheels in this diff ──────────────────────────────────────
   lines.push('### Reinvented wheels in this diff');
   lines.push('');
-  if (auditFindings.length) {
+  if (auditFailed) {
+    lines.push('Not checked — the audit step failed (see the note below).');
+    lines.push('');
+  } else if (auditFindings.length) {
     for (const f of auditFindings) {
       const tag = f.level === 'high' ? 'high' : 'info';
       lines.push(`- **${cell(f.title)}** (${tag}) — \`${cell(f.file)}:${f.line}\` — covered by ${cell(f.coveredBy)}`);
@@ -60,17 +63,15 @@ export function renderSummary({ addedDeps = [], undocumentedDeps = [], auditFind
   }
 
   // ── Verdict ─────────────────────────────────────────────────────────────
-  const blocking = strict && (undocumentedDeps.length > 0 || highCount > 0);
+  const bits = [];
+  if (undocumentedDeps.length) bits.push(`${undocumentedDeps.length} undocumented dependenc${undocumentedDeps.length === 1 ? 'y' : 'ies'}`);
+  if (highCount) bits.push(`${highCount} high-confidence wheel${highCount === 1 ? '' : 's'}`);
+  if (auditFailed) bits.push('the wheel audit could not run');
+  const blocking = strict && bits.length > 0;
   if (blocking) {
-    const bits = [];
-    if (undocumentedDeps.length) bits.push(`${undocumentedDeps.length} undocumented dependenc${undocumentedDeps.length === 1 ? 'y' : 'ies'}`);
-    if (highCount) bits.push(`${highCount} high-confidence wheel${highCount === 1 ? '' : 's'}`);
     lines.push(`**Verdict: changes requested** — ${bits.join(' and ')} in strict mode.`);
-  } else if (undocumentedDeps.length || highCount) {
-    const bits = [];
-    if (undocumentedDeps.length) bits.push(`${undocumentedDeps.length} undocumented dependenc${undocumentedDeps.length === 1 ? 'y' : 'ies'}`);
-    if (highCount) bits.push(`${highCount} high-confidence wheel${highCount === 1 ? '' : 's'}`);
-    lines.push(`**Verdict: advisory** — ${bits.join(' and ')} flagged (not blocking; run with \`strict: true\` to enforce).`);
+  } else if (bits.length) {
+    lines.push(`**Verdict: ${auditFailed ? 'incomplete' : 'advisory'}** — ${bits.join(' and ')} (not blocking; run with \`strict: true\` to enforce).`);
   } else {
     lines.push('**Verdict: clean** — no undocumented dependencies and no reinvented wheels in this diff.');
   }
@@ -79,12 +80,13 @@ export function renderSummary({ addedDeps = [], undocumentedDeps = [], auditFind
 }
 
 /**
- * Exit-code policy: only strict mode can fail the check.
- * @param {{undocumentedDeps?: Array<object>, highFindings?: number|Array<object>, strict?: boolean}} input
+ * Exit-code policy: only strict mode can fail the check — on undocumented
+ * deps, high-confidence wheels, or an audit that could not run.
+ * @param {{undocumentedDeps?: Array<object>, highFindings?: number|Array<object>, strict?: boolean, auditFailed?: boolean}} input
  * @returns {0|1}
  */
-export function decideExit({ undocumentedDeps = [], highFindings = 0, strict = false } = {}) {
+export function decideExit({ undocumentedDeps = [], highFindings = 0, strict = false, auditFailed = false } = {}) {
   const highCount = Array.isArray(highFindings) ? highFindings.length : Number(highFindings) || 0;
   const undocCount = Array.isArray(undocumentedDeps) ? undocumentedDeps.length : Number(undocumentedDeps) || 0;
-  return strict && (undocCount > 0 || highCount > 0) ? 1 : 0;
+  return strict && (undocCount > 0 || highCount > 0 || auditFailed) ? 1 : 0;
 }

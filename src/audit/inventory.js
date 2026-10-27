@@ -63,6 +63,53 @@ function readPackageManifest(rootDir) {
   }
 }
 
+/**
+ * Body of a top-level `key = [ … ]` TOML array, ending at the first `]` that
+ * is outside a quoted string — a lazy `[\s\S]*?\]` stopped at the `]` of
+ * "requests[socks]" and silently dropped the rest of the array.
+ * @param {string} text
+ * @param {string} key
+ * @returns {string|null}
+ */
+export function tomlArrayBody(text, key) {
+  const m = new RegExp(`^${key}\\s*=\\s*\\[`, 'm').exec(text);
+  if (!m) return null;
+  let quote = null;
+  for (let i = m.index + m[0].length; i < text.length; i++) {
+    const ch = text[i];
+    if (quote) {
+      if (ch === '\\' && quote === '"') i += 1;
+      else if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '#') {
+      while (i < text.length && text[i] !== '\n') i += 1;
+    } else if (ch === ']') {
+      return text.slice(m.index + m[0].length, i);
+    }
+  }
+  return text.slice(m.index + m[0].length);
+}
+
+/**
+ * The lowest Python minor version a PEP 440 specifier admits ('>=3.8,<3.13'
+ * → '3.8'). Upper bounds and exclusions (<, <=, !=) say nothing about the
+ * minimum and are skipped; returns null when no lower bound is declared.
+ * @param {string} spec
+ * @returns {string|null}
+ */
+export function pythonFloor(spec) {
+  let floor = null;
+  for (const clause of String(spec || '').split(',')) {
+    const m = clause.trim().match(/^(>=|>|~=|===|==)?\s*(\d+)(?:\.(\d+))?/);
+    if (!m) continue;
+    const maj = Number(m[2]);
+    const min = Number(m[3] || 0);
+    if (!floor || maj > floor.maj || (maj === floor.maj && min > floor.min)) floor = { maj, min };
+  }
+  return floor ? `${floor.maj}.${floor.min}` : null;
+}
+
 /** Pull dependency names + requires-python from pyproject.toml + requirements*.txt (tolerant, no TOML parser). */
 function readPyDeps(rootDir, manifests) {
   const deps = new Set();
@@ -74,15 +121,12 @@ function readPyDeps(rootDir, manifests) {
     try {
       const text = readFileSync(pyproject, 'utf8');
       // Grab the [project] dependencies = [ ... ] array and pull quoted strings.
-      const m = text.match(/^dependencies\s*=\s*\[([\s\S]*?)\]/m);
-      if (m) {
-        for (const q of m[1].matchAll(/["']([^"']+)["']/g)) deps.add(normalizePyName(q[1]));
+      const body = tomlArrayBody(text, 'dependencies');
+      if (body !== null) {
+        for (const q of body.matchAll(/["']([^"']+)["']/g)) deps.add(normalizePyName(q[1]));
       }
       const rp = text.match(/^requires-python\s*=\s*["']([^"']+)["']/m);
-      if (rp) {
-        const ver = rp[1].match(/(\d+\.\d+)/);
-        if (ver) pythonRequires = ver[1];
-      }
+      if (rp) pythonRequires = pythonFloor(rp[1]);
     } catch { /* tolerate */ }
   }
 
